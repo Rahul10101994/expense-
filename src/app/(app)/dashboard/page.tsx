@@ -1,3 +1,4 @@
+
 import { Card } from '@/components/ui/card';
 import OverviewCards from '@/components/dashboard/overview-cards';
 import IncomeExpenseChart from '@/components/dashboard/income-expense-chart';
@@ -7,6 +8,7 @@ import AiInsights from '@/components/dashboard/ai-insights';
 import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
 
 import { transactions, budgets, goals } from '@/lib/data';
+import Link from 'next/link';
 
 export default async function DashboardPage() {
   // In a real app, this data would be fetched from an API
@@ -29,13 +31,15 @@ export default async function DashboardPage() {
           <SpendingBreakdownChart transactions={financialData.transactions} />
         </Card>
       </div>
+       <Link href="/budgets">
+          <BudgetGoals budgets={financialData.budgets} />
+      </Link>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-12 lg:col-span-4 h-[440px]">
           <RecentTransactions transactions={financialData.transactions} />
         </Card>
         <div className="col-span-12 lg:col-span-3 space-y-4">
             <AiInsights transactions={financialData.transactions} goals={financialData.goals} />
-            <BudgetGoals budgets={financialData.budgets} />
         </div>
       </div>
     </div>
