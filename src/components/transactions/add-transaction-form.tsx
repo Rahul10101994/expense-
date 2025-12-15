@@ -57,7 +57,7 @@ const formSchema = z.object({
 });
 
 type AddTransactionFormProps = {
-  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'accountId'>) => void;
 };
 
 export default function AddTransactionForm({ onAddTransaction }: AddTransactionFormProps) {
@@ -73,7 +73,7 @@ export default function AddTransactionForm({ onAddTransaction }: AddTransactionF
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const amount = values.type === 'income' ? values.amount : -values.amount;
+    const amount = values.type === 'expense' || values.type === 'investment' ? -values.amount : values.amount;
 
     onAddTransaction({
       ...values,

@@ -11,23 +11,39 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import AddTransactionForm from '@/components/transactions/add-transaction-form';
-import { transactions as initialTransactions } from '@/lib/data';
 import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import type { Transaction } from '@/lib/types';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { Spinner } from '@/components/ui/spinner';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+
 
 export default function TransactionsPage() {
-    const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+    const firestore = useFirestore();
+    const { user } = useUser();
 
-    const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
-        const transactionWithId = {
+    const transactionsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        // Assuming there is one account per user for simplicity for now
+        // A more robust solution would involve account selection
+        return collection(firestore, `users/${user.uid}/accounts/default/transactions`);
+    }, [firestore, user]);
+
+    const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);
+
+    const handleAddTransaction = (newTransaction: Omit<Transaction, 'id' | 'accountId'>) => {
+        if (!transactionsQuery) return;
+        
+        const transactionData = {
             ...newTransaction,
-            id: (transactions.length + 1).toString(),
+            accountId: 'default', // Hardcoding default account
         };
-        setTransactions(prevTransactions => [transactionWithId, ...prevTransactions]);
+        addDocumentNonBlocking(transactionsQuery, transactionData);
     };
     
-    const allTransactions = [...transactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const allTransactions = transactions ? [...transactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
     
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -46,6 +62,12 @@ export default function TransactionsPage() {
                 <AddTransactionForm onAddTransaction={handleAddTransaction} />
             </CardHeader>
             <CardContent>
+                {isLoading && (
+                    <div className="flex justify-center items-center h-64">
+                        <Spinner />
+                    </div>
+                )}
+                {!isLoading && (
                  <Table>
                     <TableHeader>
                         <TableRow>
@@ -70,12 +92,13 @@ export default function TransactionsPage() {
                                     "text-right font-medium",
                                     transaction.type === 'income' ? 'text-green-500' : 'text-foreground'
                                 )}>
-                                    {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.type === 'income' ? transaction.amount : -transaction.amount)}
+                                    {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.type === 'income' ? transaction.amount : transaction.amount)}
                                 </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
+                )}
             </CardContent>
         </Card>
     );

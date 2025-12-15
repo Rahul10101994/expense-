@@ -8,6 +8,7 @@ export enum TransactionType {
 
 export type Transaction = {
   id: string;
+  accountId: string;
   date: string;
   description: string;
   amount: number;

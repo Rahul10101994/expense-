@@ -26,9 +26,12 @@ import {
   Settings,
   MoreHorizontal,
   Wallet,
+  LogOut,
 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
+import { useAuth, useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -42,6 +45,20 @@ const menuItems = [
 export default function AppSidebar() {
   const pathname = usePathname();
   const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
+  const auth = useAuth();
+  const { user } = useUser();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    router.push('/login');
+  };
+
+  const getAvatarFallback = () => {
+    if (user?.isAnonymous) return "AN";
+    if (user?.email) return user.email.slice(0, 2).toUpperCase();
+    return "JD";
+  }
 
   return (
     <Sidebar>
@@ -77,14 +94,14 @@ export default function AppSidebar() {
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
             {userAvatar && <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint}/>}
-            <AvatarFallback>JD</AvatarFallback>
+            <AvatarFallback>{getAvatarFallback()}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">Jane Doe</span>
-            <span className="text-xs text-muted-foreground">jane.doe@email.com</span>
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-sm font-medium truncate">{user?.isAnonymous ? "Anonymous User" : (user?.displayName || user?.email || "Jane Doe")}</span>
+            {!user?.isAnonymous && <span className="text-xs text-muted-foreground truncate">{user?.email || "jane.doe@email.com"}</span>}
           </div>
-          <Button variant="ghost" size="icon" className="ml-auto">
-            <MoreHorizontal />
+           <Button variant="ghost" size="icon" className="ml-auto flex-shrink-0" onClick={handleSignOut}>
+            <LogOut />
           </Button>
         </div>
       </SidebarFooter>
