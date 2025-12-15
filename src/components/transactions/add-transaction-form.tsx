@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { categories } from '@/lib/data';
-import { TransactionType } from '@/lib/types';
+import { TransactionType, type Transaction } from '@/lib/types';
 import { PlusCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -56,7 +56,11 @@ const formSchema = z.object({
   }),
 });
 
-export default function AddTransactionForm() {
+type AddTransactionFormProps = {
+  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+};
+
+export default function AddTransactionForm({ onAddTransaction }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,8 +73,14 @@ export default function AddTransactionForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    // In a real app, you would handle form submission here, e.g., send data to an API
+    const amount = values.type === 'income' ? values.amount : -values.amount;
+
+    onAddTransaction({
+      ...values,
+      amount,
+      date: values.date.toISOString(),
+      category: values.category as Transaction['category'],
+    });
     setOpen(false);
     form.reset();
   }

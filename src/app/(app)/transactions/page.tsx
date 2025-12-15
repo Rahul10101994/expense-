@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -8,11 +11,22 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import AddTransactionForm from '@/components/transactions/add-transaction-form';
-import { transactions } from '@/lib/data';
+import { transactions as initialTransactions } from '@/lib/data';
 import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
+import type { Transaction } from '@/lib/types';
 
 export default function TransactionsPage() {
+    const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+
+    const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
+        const transactionWithId = {
+            ...newTransaction,
+            id: (transactions.length + 1).toString(),
+        };
+        setTransactions(prevTransactions => [transactionWithId, ...prevTransactions]);
+    };
+    
     const allTransactions = [...transactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     const formatCurrency = (amount: number) => {
@@ -29,7 +43,7 @@ export default function TransactionsPage() {
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                <AddTransactionForm />
+                <AddTransactionForm onAddTransaction={handleAddTransaction} />
             </CardHeader>
             <CardContent>
                  <Table>
@@ -56,7 +70,7 @@ export default function TransactionsPage() {
                                     "text-right font-medium",
                                     transaction.type === 'income' ? 'text-green-500' : 'text-foreground'
                                 )}>
-                                    {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.amount)}
+                                    {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.type === 'income' ? transaction.amount : -transaction.amount)}
                                 </TableCell>
                             </TableRow>
                         ))}
