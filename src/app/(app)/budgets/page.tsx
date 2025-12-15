@@ -1,8 +1,10 @@
 
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { budgets } from '@/lib/data';
 import { CategoryIcon } from '@/lib/icons';
+import BudgetGoals from '@/components/dashboard/budget-goals';
 
 export default function BudgetsPage() {
     const formatCurrency = (amount: number) => {
@@ -13,6 +15,7 @@ export default function BudgetsPage() {
     };
     return (
         <div className="space-y-4">
+            <BudgetGoals budgets={budgets} />
             <Card>
                 <CardHeader>
                     <CardTitle>Budget by Category</CardTitle>
