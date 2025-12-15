@@ -6,6 +6,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 export const metadata: Metadata = {
   title: 'FinanceFlow',
   description: 'Your personal finance dashboard.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
