@@ -9,6 +9,7 @@ import {
   BarChart3,
   Settings,
   Plus,
+  Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AddTransactionForm from '@/components/transactions/add-transaction-form';
@@ -21,9 +22,9 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
+  { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function AppBottomNav() {
@@ -58,7 +59,7 @@ export default function AppBottomNav() {
                  </AddTransactionForm>
              </div>
         </div>
-      <nav className="flex items-center justify-around h-16">
+      <nav className="grid grid-cols-5 items-center justify-around h-16">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -72,8 +73,8 @@ export default function AppBottomNav() {
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               )}
             >
-              <item.icon className="h-6 w-6" />
-              <span className="text-xs font-medium">{item.label}</span>
+              <item.icon className="h-5 w-5" />
+              <span className="text-xs font-medium text-center">{item.label}</span>
             </Link>
           );
         })}

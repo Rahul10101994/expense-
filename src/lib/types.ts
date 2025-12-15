@@ -16,6 +16,14 @@ export type Transaction = {
   type: TransactionType;
 };
 
+export type Account = {
+    id: string;
+    userId: string;
+    name: string;
+    type: 'checking' | 'savings' | 'investment' | 'credit' | 'other';
+    balance: number;
+}
+
 export type Budget = {
   category: TransactionCategory;
   limit: number;

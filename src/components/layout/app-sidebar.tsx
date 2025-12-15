@@ -27,6 +27,7 @@ import {
   MoreHorizontal,
   Wallet,
   LogOut,
+  Landmark,
 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
@@ -36,6 +37,7 @@ import { useRouter } from 'next/navigation';
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
+  { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/goals', label: 'Goals', icon: Target },
