@@ -201,7 +201,7 @@ export default function AddTransactionForm() {
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select a transaction type" />
-                            </Trigger>
+                            </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                             <SelectItem value={TransactionType.Expense}>
