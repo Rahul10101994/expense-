@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -58,9 +58,10 @@ const formSchema = z.object({
 
 type AddTransactionFormProps = {
   onAddTransaction: (transaction: Omit<Transaction, 'id' | 'accountId'>) => void;
+  children?: ReactNode;
 };
 
-export default function AddTransactionForm({ onAddTransaction }: AddTransactionFormProps) {
+export default function AddTransactionForm({ onAddTransaction, children }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -88,10 +89,12 @@ export default function AddTransactionForm({ onAddTransaction }: AddTransactionF
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Transaction
-        </Button>
+        {children || (
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Transaction
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] grid-rows-[auto_minmax(0,1fr)_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-0">

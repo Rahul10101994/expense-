@@ -18,11 +18,13 @@ import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebas
 import { collection } from 'firebase/firestore';
 import { Spinner } from '@/components/ui/spinner';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 export default function TransactionsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const isMobile = useIsMobile();
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -53,13 +55,13 @@ export default function TransactionsPage() {
     };
 
     return (
-        <Card>
+        <Card className={cn(isMobile && "border-0 shadow-none")}>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                <AddTransactionForm onAddTransaction={handleAddTransaction} />
+                 {!isMobile && <AddTransactionForm onAddTransaction={handleAddTransaction} />}
             </CardHeader>
             <CardContent>
                 {isLoading && (
