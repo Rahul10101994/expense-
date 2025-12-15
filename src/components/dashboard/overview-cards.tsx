@@ -13,6 +13,7 @@ import { DollarSign, ArrowUp, ArrowDown, PiggyBank, User as UserIcon } from 'luc
 import type { Transaction } from '@/lib/types';
 import { useUser } from '@/firebase';
 import { isSameMonth, isSameYear, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import Link from 'next/link';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall';
 
@@ -96,19 +97,21 @@ export default function OverviewCards({ transactions }: { transactions: Transact
               </SelectContent>
             </Select>
         </CardHeader>
-        <CardContent className="space-y-2">
-           <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
-           <div className="flex justify-between text-xs text-muted-foreground">
-               <div className='flex flex-col'>
-                    <span>Income</span>
-                    <span className="text-green-500 font-medium">{formatCurrency(income)}</span>
-               </div>
-                <div className='flex flex-col items-end'>
-                    <span>Expenses</span>
-                    <span className="text-red-500 font-medium">{formatCurrency(Math.abs(expenses))}</span>
-                </div>
-           </div>
-        </CardContent>
+        <Link href={`/reports?period=${period}`}>
+            <CardContent className="space-y-2">
+              <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                  <div className='flex flex-col'>
+                        <span>Income</span>
+                        <span className="text-green-500 font-medium">{formatCurrency(income)}</span>
+                  </div>
+                    <div className='flex flex-col items-end'>
+                        <span>Expenses</span>
+                        <span className="text-red-500 font-medium">{formatCurrency(Math.abs(expenses))}</span>
+                    </div>
+              </div>
+            </CardContent>
+        </Link>
       </Card>
     </>
   );
