@@ -1,11 +1,14 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, ArrowUp, ArrowDown, PiggyBank } from 'lucide-react';
+import { DollarSign, ArrowUp, ArrowDown, PiggyBank, User as UserIcon } from 'lucide-react';
 import type { Transaction } from '@/lib/types';
 import { useMemo } from 'react';
+import { useUser } from '@/firebase';
 
 export default function OverviewCards({ transactions }: { transactions: Transaction[] }) {
+  const { user } = useUser();
+
   const { totalBalance, totalIncome, totalExpenses, totalInvestments } = useMemo(() => {
     let totalIncome = 0;
     let totalExpenses = 0;
@@ -31,13 +34,18 @@ export default function OverviewCards({ transactions }: { transactions: Transact
       currency: 'USD',
     }).format(amount);
   };
+  
+  const getDisplayName = () => {
+    if (user?.isAnonymous) return "Anonymous User";
+    return user?.displayName || user?.email || "Welcome Back!";
+  }
 
   return (
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">{getDisplayName()}</CardTitle>
+          <UserIcon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(totalBalance)}</div>
