@@ -1,57 +1,26 @@
 'use client';
 
-import { createContext, useContext, useMemo } from 'react';
-import type { Auth } from 'firebase/auth';
-import type { Firestore } from 'firebase/firestore';
-import { FirebaseProvider, type FirebaseContextValue } from './provider';
-import { initializeFirebase } from '.';
+import React, { useMemo, type ReactNode } from 'react';
+import { FirebaseProvider } from '@/firebase/provider';
+import { initializeFirebase } from '@/firebase';
 
-const FirebaseClientContext = createContext<
-  | {
-      auth: Auth;
-      firestore: Firestore;
-    }
-  | undefined
->(undefined);
+interface FirebaseClientProviderProps {
+  children: ReactNode;
+}
 
-export function FirebaseClientProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { firebaseApp, auth, firestore } = useMemo(
-    () => initializeFirebase(),
-    []
-  );
-
-  const contextValue = {
-    auth,
-    firestore,
-  };
+export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+  const firebaseServices = useMemo(() => {
+    // Initialize Firebase on the client side, once per component mount.
+    return initializeFirebase();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   return (
-    <FirebaseProvider firebaseApp={firebaseApp}>
-      <FirebaseClientContext.Provider value={contextValue}>
-        {children}
-      </FirebaseClientContext.Provider>
+    <FirebaseProvider
+      firebaseApp={firebaseServices.firebaseApp}
+      auth={firebaseServices.auth}
+      firestore={firebaseServices.firestore}
+    >
+      {children}
     </FirebaseProvider>
   );
 }
-
-export const useAuth = () => {
-  const context = useContext(FirebaseClientContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within a FirebaseClientProvider');
-  }
-  return context.auth;
-};
-
-export const useFirestore = () => {
-  const context = useContext(FirebaseClientContext);
-  if (context === undefined) {
-    throw new Error(
-      'useFirestore must be used within a FirebaseClientProvider'
-    );
-  }
-  return context.firestore;
-};

@@ -1,0 +1,250 @@
+/**
+ * Core Philosophy: This ruleset enforces a strict user-ownership model. All user-
+ * generated data is private and can only be accessed by the user who created it.
+ * The rules are designed to be secure by default, preventing any cross-user data
+ * access.
+ *
+ * Data Structure: The data is organized hierarchically under the `/users/{userId}`
+ * collection. This structure ensures that all data related to a specific user,
+ * such as accounts, transactions, and budgets, is logically grouped and secured under
+ * their unique user ID. This path-based security is simple, performant, and avoids
+ * complex database queries within the rules themselves.
+ *
+ * Key Security Decisions:
+ * - User Listing Disabled: To protect user privacy, it is not possible to list all
+ *   documents in the top-level `/users` collection.
+ * - Strict Ownership: All subcollections (accounts, categories, etc.) inherit
+ *   ownership from the parent user document. A user can only read or write data
+ *   within their own data tree.
+ * - Relational Integrity: On document creation, key identifiers (like `userId` in an
+ *   account document) are validated to ensure they match the document's path. These
+ *   identifiers are then enforced as immutable on updates to prevent re-associating
+ *   data with a different user.
+ * - Prototyping Flexibility: While authorization is strict, data shape validation is
+ *   intentionally omitted. This allows developers to iterate on the application's
+ *   features without needing to update security rules for every schema change. Only
+ *   fields critical for security (e.g., owner IDs) are validated.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // Helper Functions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Verifies that the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Verifies that the currently authenticated user's UID matches the
+     * provided userId, typically from the document path.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * A robust check for state-changing operations (update, delete).
+     * Ensures the user is the owner AND the document already exists.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates required, user-owned fields on User document creation.
+     */
+    function hasValidNewUserData(userId) {
+      let data = request.resource.data;
+      return data.id == userId;
+    }
+
+    /**
+     * Enforces immutability of critical relational fields on User document updates.
+     */
+    function hasValidUpdatedUserData() {
+      let data = request.resource.data;
+      return data.id == resource.data.id;
+    }
+
+    /**
+     * Validates required, user-owned fields on Account document creation.
+     */
+    function hasValidNewAccountData(userId) {
+      let data = request.resource.data;
+      return data.userId == userId;
+    }
+
+    /**
+     * Enforces immutability of critical relational fields on Account document updates.
+     */
+    function hasValidUpdatedAccountData() {
+      let data = request.resource.data;
+      return data.userId == resource.data.userId;
+    }
+
+    /**
+     * Validates required relational fields on Transaction document creation.
+     */
+    function hasValidNewTransactionData(accountId) {
+      let data = request.resource.data;
+      return data.accountId == accountId;
+    }
+
+    /**
+     * Enforces immutability of critical relational fields on Transaction document updates.
+     */
+    function hasValidUpdatedTransactionData() {
+      let data = request.resource.data;
+      return data.accountId == resource.data.accountId;
+    }
+
+    /**
+     * Validates required, user-owned fields on Category document creation.
+     */
+    function hasValidNewCategoryData(userId) {
+      let data = request.resource.data;
+      return data.userId == userId;
+    }
+
+    /**
+     * Enforces immutability of critical relational fields on Category document updates.
+     */
+    function hasValidUpdatedCategoryData() {
+      let data = request.resource.data;
+      return data.userId == resource.data.userId;
+    }
+    
+    /**
+     * Validates required, user-owned fields on Budget document creation.
+     */
+    function hasValidNewBudgetData(userId) {
+      let data = request.resource.data;
+      return data.userId == userId;
+    }
+
+    /**
+     * Enforces immutability of critical relational fields on Budget document updates.
+     */
+    function hasValidUpdatedBudgetData() {
+      let data = request.resource.data;
+      return data.userId == resource.data.userId;
+    }
+
+    /**
+     * Validates required, user-owned fields on Goal document creation.
+     */
+    function hasValidNewGoalData(userId) {
+      let data = request.resource.data;
+      return data.userId == userId;
+    }
+
+    /**
+     * Enforces immutability of critical relational fields on Goal document updates.
+     */
+    function hasValidUpdatedGoalData() {
+      let data = request.resource.data;
+      return data.userId == resource.data.userId;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Collection Rules
+    // -------------------------------------------------------------------------
+
+    /**
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow A signed-in user (auth.uid=`user123`) can (create) their own user profile at `/users/user123`.
+     * @deny A signed-in user (auth.uid=`user123`) cannot (list) documents at `/users` to discover other users.
+     * @principle Restricts access to a user's own profile document and prevents user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && hasValidNewUserData(userId);
+      allow update: if isExistingOwner(userId) && hasValidUpdatedUserData();
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Controls access to a user's financial accounts.
+       * @path /users/{userId}/accounts/{accountId}
+       * @allow A user (auth.uid=`user123`) can (list) all accounts at `/users/user123/accounts`.
+       * @deny Another user (auth.uid=`user456`) cannot (get) an account at `/users/user123/accounts/acc_abc`.
+       * @principle Enforces strict ownership for all account data. All reads and writes are restricted to the document owner.
+       */
+      match /accounts/{accountId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && hasValidNewAccountData(userId);
+        allow update: if isExistingOwner(userId) && hasValidUpdatedAccountData();
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Controls access to transactions within an account.
+         * @path /users/{userId}/accounts/{accountId}/transactions/{transactionId}
+         * @allow A user (auth.uid=`user123`) can (create) a transaction at `/users/user123/accounts/acc_abc/transactions/txn_xyz`.
+         * @deny Another user (auth.uid=`user456`) cannot (delete) a transaction at `/users/user123/accounts/acc_abc/transactions/txn_xyz`.
+         * @principle Inherits ownership from the parent user document. Access is restricted to the user who owns the account.
+         */
+        match /transactions/{transactionId} {
+          allow get: if isOwner(userId);
+          allow list: if isOwner(userId);
+          allow create: if isOwner(userId) && hasValidNewTransactionData(accountId);
+          allow update: if isExistingOwner(userId) && hasValidUpdatedTransactionData();
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+
+      /**
+       * @description Controls access to a user's transaction categories.
+       * @path /users/{userId}/categories/{categoryId}
+       * @allow A user (auth.uid=`user123`) can (update) a category at `/users/user123/categories/cat_abc`.
+       * @deny Another user (auth.uid=`user456`) cannot (list) categories at `/users/user123/categories`.
+       * @principle Restricts access to a user's own custom-defined categories.
+       */
+      match /categories/{categoryId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && hasValidNewCategoryData(userId);
+        allow update: if isExistingOwner(userId) && hasValidUpdatedCategoryData();
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Controls access to a user's monthly budgets.
+       * @path /users/{userId}/budgets/{budgetId}
+       * @allow A user (auth.uid=`user123`) can (get) a budget at `/users/user123/budgets/bud_abc`.
+       * @deny Another user (auth.uid=`user456`) cannot (create) a budget at `/users/user123/budgets/bud_xyz`.
+       * @principle Enforces strict ownership for all budgeting data.
+       */
+      match /budgets/{budgetId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && hasValidNewBudgetData(userId);
+        allow update: if isExistingOwner(userId) && hasValidUpdatedBudgetData();
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Controls access to a user's financial goals.
+       * @path /users/{userId}/goals/{goalId}
+       * @allow A user (auth.uid=`user123`) can (list) their goals at `/users/user123/goals`.
+       * @deny Another user (auth.uid=`user456`) cannot (delete) a goal at `/users/user123/goals/goal_abc`.
+       * @principle Restricts access to a user's personal financial goals.
+       */
+      match /goals/{goalId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && hasValidNewGoalData(userId);
+        allow update: if isExistingOwner(userId) && hasValidUpdatedGoalData();
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+  }
+}
