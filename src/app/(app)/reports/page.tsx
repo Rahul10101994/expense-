@@ -13,6 +13,7 @@ import { ArrowDown, ArrowUp, PiggyBank } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
+import BudgetGoals from '@/components/dashboard/budget-goals';
 
 export default function ReportsPage() {
     const firestore = useFirestore();
@@ -142,6 +143,8 @@ export default function ReportsPage() {
                     <SpendingBreakdownChart transactions={filteredTransactions} />
                 </Card>
             </div>
+            
+            <BudgetGoals budgets={budgets} />
 
             <Card>
                 <CardHeader>
