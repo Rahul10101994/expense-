@@ -8,8 +8,8 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { CategoryIcon } from '@/lib/icons';
 import type { Budget } from '@/lib/types';
+import { useMemo } from 'react';
 
 export default function BudgetGoals({ budgets }: { budgets: Budget[] }) {
     const formatCurrency = (amount: number) => {
@@ -19,30 +19,36 @@ export default function BudgetGoals({ budgets }: { budgets: Budget[] }) {
         }).format(amount);
     };
 
+    const { totalBudget, totalSpent, totalLeft, progress } = useMemo(() => {
+        const totalBudget = budgets.reduce((acc, budget) => acc + budget.limit, 0);
+        const totalSpent = budgets.reduce((acc, budget) => acc + budget.spent, 0);
+        const totalLeft = totalBudget - totalSpent;
+        const progress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+        return { totalBudget, totalSpent, totalLeft, progress };
+    }, [budgets]);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Budget Goals</CardTitle>
+        <CardTitle>Budget Overview</CardTitle>
         <CardDescription>Your spending progress for this month.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {budgets.map((budget) => {
-            const progress = (budget.spent / budget.limit) * 100;
-            return (
-                <div key={budget.category}>
-                    <div className="flex justify-between items-center mb-1">
-                        <div className="flex items-center gap-2">
-                           <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
-                           <span className="text-sm font-medium">{budget.category}</span>
-                        </div>
-                        <span className="text-sm text-muted-foreground">
-                            {formatCurrency(budget.spent)} / {formatCurrency(budget.limit)}
-                        </span>
-                    </div>
-                    <Progress value={progress} />
-                </div>
-            )
-        })}
+        <Progress value={progress} />
+        <div className="flex justify-between items-center text-sm">
+            <div className="flex flex-col items-start">
+                <span className="text-muted-foreground">Spent</span>
+                <span className="font-medium text-lg">{formatCurrency(totalSpent)}</span>
+            </div>
+             <div className="flex flex-col items-center">
+                <span className="text-muted-foreground">Remaining</span>
+                <span className="font-medium text-lg text-primary">{formatCurrency(totalLeft)}</span>
+            </div>
+            <div className="flex flex-col items-end">
+                <span className="text-muted-foreground">Budget</span>
+                <span className="font-medium text-lg">{formatCurrency(totalBudget)}</span>
+            </div>
+        </div>
       </CardContent>
     </Card>
   );
