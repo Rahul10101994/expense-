@@ -1,5 +1,10 @@
 export type TransactionCategory = 'Income' | 'Food' | 'Shopping' | 'Housing' | 'Transportation' | 'Utilities' | 'Entertainment' | 'Health' | 'Investment' | 'Other';
-export type TransactionType = 'income' | 'expense' | 'investment';
+
+export enum TransactionType {
+  Income = 'income',
+  Expense = 'expense',
+  Investment = 'investment'
+}
 
 export type Transaction = {
   id: string;

@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import AddTransactionForm from '@/components/transactions/add-transaction-form';
 import { transactions } from '@/lib/data';
 import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
@@ -24,9 +24,12 @@ export default function TransactionsPage() {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>All Transactions</CardTitle>
-                <CardDescription>A complete list of your transactions.</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>All Transactions</CardTitle>
+                    <CardDescription>A complete list of your transactions.</CardDescription>
+                </div>
+                <AddTransactionForm />
             </CardHeader>
             <CardContent>
                  <Table>
