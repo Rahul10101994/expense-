@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,12 +30,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { format, getYear, startOfMonth, endOfMonth } from 'date-fns';
+import { collection, query, where, doc, writeBatch } from 'firebase/firestore';
+import { format, getYear, startOfMonth } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { categories } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -104,6 +103,8 @@ export default function BudgetPlannerPage() {
   const { data: existingBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
   useEffect(() => {
+    if (budgetsLoading) return; // Wait until loading is finished
+
     if (existingBudgets && existingBudgets.length > 0) {
       const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
       setTotalBudget(total);
@@ -115,20 +116,19 @@ export default function BudgetPlannerPage() {
       });
       stepTwoForm.setValue('categoryBudgets', categoryBudgets);
       setStep(2);
-    } else if (!budgetsLoading) {
-      // If no budgets, reset to step 1 and clear old values
+    } else {
+       // Only reset if we are not loading and there are no budgets for the selected month.
       setStep(1);
       setTotalBudget(0);
+      // We keep the selected month in stepOneForm
+      stepOneForm.setValue('totalAmount', 0);
+      stepOneForm.setValue('carryForward', false);
       stepTwoForm.reset({
         categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
       });
-       stepOneForm.reset({
-        totalAmount: 0,
-        month: selectedMonth,
-        carryForward: false
-      });
     }
-  }, [existingBudgets, budgetsLoading, stepOneForm, stepTwoForm, selectedMonth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingBudgets, budgetsLoading, selectedMonth]);
 
 
   const { fields } = useFieldArray({
@@ -142,34 +142,48 @@ export default function BudgetPlannerPage() {
   }
   
   async function onStepTwoSubmit(values: z.infer<typeof stepTwoSchema>) {
-    if (!user) return;
-    const budgetsCollection = collection(firestore, `users/${user.uid}/budgets`);
+    if (!user || !firestore) return;
     setIsSubmitting(true);
 
     const month = stepOneForm.getValues('month');
+    const monthStart = startOfMonth(new Date(month)).toISOString();
 
     try {
-        for (const budget of values.categoryBudgets) {
-            if (budget.amount >= 0) {
-                const existingBudgetDoc = existingBudgets?.find(b => b.categoryId === budget.category);
-                const newBudget = {
-                    userId: user.uid,
-                    categoryId: budget.category,
-                    amount: budget.amount,
-                    month: startOfMonth(new Date(month)).toISOString(),
-                };
-                // A better approach would be to query first, then update or create.
-                addDocumentNonBlocking(budgetsCollection, newBudget);
-            }
-        }
+      const batch = writeBatch(firestore);
       
-        toast({
-            title: 'Budgets Saved',
-            description: `Your budgets for ${format(new Date(month), 'MMMM yyyy')} have been set.`,
-        });
-        router.push('/budgets');
+      for (const budget of values.categoryBudgets) {
+        if (budget.amount >= 0) {
+          const existingBudgetDoc = existingBudgets?.find(b => b.categoryId === budget.category);
+          
+          const budgetData = {
+            userId: user.uid,
+            categoryId: budget.category,
+            amount: budget.amount,
+            month: monthStart,
+          };
+          
+          if (existingBudgetDoc) {
+            // Update existing document
+            const docRef = doc(firestore, `users/${user.uid}/budgets`, existingBudgetDoc.id);
+            batch.set(docRef, budgetData, { merge: true });
+          } else {
+            // Create new document
+            const newDocRef = doc(collection(firestore, `users/${user.uid}/budgets`));
+            batch.set(newDocRef, budgetData);
+          }
+        }
+      }
+      
+      await batch.commit();
+      
+      toast({
+          title: 'Budgets Saved',
+          description: `Your budgets for ${format(new Date(month), 'MMMM yyyy')} have been set.`,
+      });
+      router.push('/budgets');
 
     } catch (error) {
+      console.error(error);
       toast({
         variant: 'destructive',
         title: 'Error',
