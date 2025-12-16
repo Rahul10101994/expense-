@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -15,6 +16,30 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { Transaction } from "@/lib/types"
+
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  const outerRadiusWithPadding = outerRadius + 10;
+  const x2 = cx + outerRadiusWithPadding * Math.cos(-midAngle * RADIAN);
+  const y2 = cy + outerRadiusWithPadding * Math.sin(-midAngle * RADIAN);
+  
+  const textAnchor = x2 > cx ? 'start' : 'end';
+
+
+  return (
+    <g>
+      <path d={`M${x},${y}L${x2},${y2}`} stroke="hsl(var(--foreground))" fill="none" strokeOpacity={0.5}/>
+      <text x={x2 + (x2 > cx ? 1 : -1) * 12} y={y2} textAnchor={textAnchor} fill="hsl(var(--foreground))" dominantBaseline="central">
+        {`${payload.category} (${(percent * 100).toFixed(0)}%)`}
+      </text>
+    </g>
+  );
+};
+
 
 export default function SpendingBreakdownChart({ transactions }: { transactions: Transaction[] }) {
     const expenses = transactions.filter(t => t.type === 'expense');
@@ -65,36 +90,9 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
               nameKey="category"
               innerRadius="60%"
               strokeWidth={5}
+              labelLine={false}
+              label={renderCustomizedLabel}
             >
-              <Label
-                content={({ viewBox }) => {
-                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                    return (
-                      <text
-                        x={viewBox.cx}
-                        y={viewBox.cy}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        <tspan
-                          x={viewBox.cx}
-                          y={viewBox.cy}
-                          className="fill-foreground text-3xl font-bold"
-                        >
-                          {totalSpent.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </tspan>
-                        <tspan
-                          x={viewBox.cx}
-                          y={(viewBox.cy || 0) + 24}
-                          className="fill-muted-foreground"
-                        >
-                          Total Spent
-                        </tspan>
-                      </text>
-                    )
-                  }
-                }}
-              />
             </Pie>
           </PieChart>
         </ChartContainer>
