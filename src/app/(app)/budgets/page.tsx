@@ -12,7 +12,9 @@ import type { Transaction, Budget } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
-import AddBudgetForm from '@/components/budgets/add-budget-form';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
+import Link from 'next/link';
 
 
 export default function BudgetsPage() {
@@ -84,7 +86,12 @@ export default function BudgetsPage() {
                         <CardTitle>Budgets</CardTitle>
                         <CardDescription>Create and manage your monthly budgets.</CardDescription>
                     </div>
-                    <AddBudgetForm />
+                    <Link href="/budget-planner">
+                      <Button size="sm">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Budget
+                      </Button>
+                    </Link>
                 </CardHeader>
             </Card>
 
