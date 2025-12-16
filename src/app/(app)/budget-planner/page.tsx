@@ -94,10 +94,10 @@ export default function BudgetPlannerPage() {
   const { data: existingBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
   useEffect(() => {
-    // Exit if we are in a loading state to prevent premature form resets.
-    if (budgetsLoading) return;
-
-    // Check if budgets for the selected month exist.
+    if (budgetsLoading) {
+      return;
+    }
+  
     if (existingBudgets && existingBudgets.length > 0) {
       const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
       const categoryBudgets = expenseCategories.map(cat => {
@@ -108,13 +108,11 @@ export default function BudgetPlannerPage() {
       form.reset({
         totalAmount: total,
         month: selectedMonth,
-        carryForward: false, // Don't carry over the carry-forward setting
+        carryForward: false,
         categoryBudgets: categoryBudgets,
       });
-
     } else {
-      // This block will run after loading is complete and no budgets were found for the selected month.
-      // It resets the form to a clean slate for the new month's budget entry.
+      // If no budgets exist for the selected month, reset to default, but keep the selected month.
       form.reset({
         totalAmount: 0,
         month: selectedMonth,
@@ -122,8 +120,7 @@ export default function BudgetPlannerPage() {
         categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
       });
     }
-  // The dependency array ensures this effect re-runs when the selected month or the loaded data changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingBudgets, budgetsLoading, selectedMonth]);
 
 
@@ -233,7 +230,7 @@ export default function BudgetPlannerPage() {
               </Button>
             </Link>
             <div>
-                <CardTitle>Budget Planner</CardTitle>
+                <CardTitle className="text-xl">Budget Planner</CardTitle>
                 <CardDescription>
                   Allocate your budget across different categories for the month.
                 </CardDescription>
