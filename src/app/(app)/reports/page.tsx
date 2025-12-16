@@ -113,7 +113,7 @@ export default function ReportsPage() {
                         <ArrowUp className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent className="p-2">
-                        <div className="text-2xl font-bold text-green-500">{formatCurrency(income)}</div>
+                        <div className="text-lg font-bold text-green-500">{formatCurrency(income)}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -122,7 +122,7 @@ export default function ReportsPage() {
                         <ArrowDown className="h-4 w-4 text-red-500" />
                     </CardHeader>
                     <CardContent className="p-2">
-                        <div className="text-2xl font-bold text-red-500">{formatCurrency(expenses)}</div>
+                        <div className="text-lg font-bold text-red-500">{formatCurrency(expenses)}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -131,7 +131,7 @@ export default function ReportsPage() {
                         <PiggyBank className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent className="p-2">
-                        <div className="text-2xl font-bold text-primary">{formatCurrency(savings)}</div>
+                        <div className="text-lg font-bold text-primary">{formatCurrency(savings)}</div>
                     </CardContent>
                 </Card>
             </div>
