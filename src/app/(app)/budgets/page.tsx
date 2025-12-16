@@ -11,6 +11,7 @@ import { collection, query } from 'firebase/firestore';
 import type { Transaction, Budget } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
 
 
 export default function BudgetsPage() {
@@ -78,7 +79,10 @@ export default function BudgetsPage() {
         <div className="space-y-4">
             <BudgetGoals budgets={budgets} />
             <Card>
-                <CardHeader className="p-2 pt-0">
+                <SpendingBreakdownChart transactions={transactions || []} />
+            </Card>
+            <Card>
+                <CardHeader className="p-2 pt-2">
                     <CardTitle className="text-sm font-medium">Budget by Category</CardTitle>
                 </CardHeader>
             </Card>
@@ -101,7 +105,7 @@ export default function BudgetsPage() {
                             <div className="flex items-center gap-2">
                                 <Progress value={progress} className={cn("h-2 flex-1", { '[&>div]:bg-destructive': isOverBudget })} />
                                 <span className={cn("text-xs font-medium w-12 text-right", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
-                                    {isOverBudget ? 'Over' : `${Math.round(100-progress)}%`}
+                                    {isOverBudget ? 'Over' : `${Math.round(100 - progress)}%`}
                                 </span>
                             </div>
                         </Card>
