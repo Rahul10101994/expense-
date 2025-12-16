@@ -65,10 +65,10 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
       </CardHeader>
       <CardContent>
           {spendingByCategory.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-5 gap-4">
                 <ChartContainer
                     config={chartConfig}
-                    className="mx-auto aspect-square max-h-[150px]"
+                    className="mx-auto aspect-square max-h-[150px] col-span-2"
                 >
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -91,18 +91,18 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                         </PieChart>
                     </ResponsiveContainer>
                 </ChartContainer>
-                <div className="flex flex-col justify-center">
-                     <ul className="grid gap-2 text-sm">
+                <div className="flex flex-col justify-center col-span-3">
+                     <ul className="grid gap-1 text-xs">
                         {spendingByCategory.map((entry, index) => {
                             const percentage = totalExpenses > 0 ? (entry.value / totalExpenses * 100).toFixed(0) : 0;
                             return (
                                 <li key={entry.name} className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2">
                                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.fill }} />
-                                        <span className="text-muted-foreground">{entry.name}</span>
+                                        <span className="text-muted-foreground truncate">{entry.name}</span>
                                     </div>
                                     <div className="flex items-center justify-end gap-2">
-                                        <span className="text-muted-foreground w-10 text-right">{percentage}%</span>
+                                        <span className="font-medium w-8 text-right">{percentage}%</span>
                                     </div>
                                 </li>
                             )
