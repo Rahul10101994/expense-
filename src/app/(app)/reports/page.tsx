@@ -1,3 +1,4 @@
+
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -99,7 +100,7 @@ export default function ReportsPage() {
     return (
         <div className="space-y-4">
             <Card>
-                <CardHeader>
+                <CardHeader className="py-3">
                     <CardTitle>Financial Reports</CardTitle>
                     <CardDescription>Detailed analysis of your financial activity for: <span className="font-semibold capitalize">{period === 'currentMonth' ? 'This Month' : period === 'currentYear' ? 'This Year' : 'Overall'}</span></CardDescription>
                 </CardHeader>
@@ -107,29 +108,29 @@ export default function ReportsPage() {
 
             <div className="grid gap-4 md:grid-cols-3">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
                         <CardTitle className="text-sm font-medium">Total Income</CardTitle>
                         <ArrowUp className="h-4 w-4 text-green-500" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pb-3">
                         <div className="text-2xl font-bold text-green-500">{formatCurrency(income)}</div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
                         <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
                         <ArrowDown className="h-4 w-4 text-red-500" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pb-3">
                         <div className="text-2xl font-bold text-red-500">{formatCurrency(expenses)}</div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
                         <CardTitle className="text-sm font-medium">Net Savings</CardTitle>
                         <PiggyBank className="h-4 w-4 text-primary" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pb-3">
                         <div className="text-2xl font-bold text-primary">{formatCurrency(savings)}</div>
                     </CardContent>
                 </Card>
@@ -147,7 +148,7 @@ export default function ReportsPage() {
             <BudgetGoals budgets={budgets} />
 
             <Card>
-                <CardHeader>
+                <CardHeader className="py-3">
                     <CardTitle>Budget Breakdown</CardTitle>
                     <CardDescription>Your spending progress for each category for the selected period.</CardDescription>
                 </CardHeader>
@@ -158,7 +159,7 @@ export default function ReportsPage() {
                     const remaining = budget.limit - budget.spent;
                     return (
                         <Card key={budget.category}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
                                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                                     <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
                                     {budget.category}
@@ -167,7 +168,7 @@ export default function ReportsPage() {
                                     {formatCurrency(budget.limit)}
                                 </span>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pb-3">
                                 <div className="text-2xl font-bold">{formatCurrency(budget.spent)}</div>
                                 <p className="text-xs text-muted-foreground">
                                     {formatCurrency(remaining)} remaining
