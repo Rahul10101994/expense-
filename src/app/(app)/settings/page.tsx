@@ -1,12 +1,10 @@
 
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { categories } from '@/lib/data';
 import { CategoryIcon } from '@/lib/icons';
 import { PlusCircle, Trash2, Download } from 'lucide-react';
 import {
@@ -18,21 +16,25 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import type { Transaction } from '@/lib/types';
+import { collection, doc, deleteDoc, addDoc } from 'firebase/firestore';
+import type { Transaction, Category } from '@/lib/types';
 import { useMemo, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isSameMonth, isSameYear, getYear, getMonth, format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { Spinner } from '@/components/ui/spinner';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 
 export default function SettingsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const { toast } = useToast();
     
     const [period, setPeriod] = useState<Period>('currentMonth');
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
+    const [newCategory, setNewCategory] = useState('');
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -40,6 +42,13 @@ export default function SettingsPage() {
     }, [firestore, user]);
 
     const { data: transactions } = useCollection<Transaction>(transactionsQuery);
+
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, `users/${user.uid}/categories`);
+    }, [firestore, user]);
+
+    const { data: categories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
     
     const filteredTransactions = useMemo(() => {
         if (!transactions) return [];
@@ -93,6 +102,34 @@ export default function SettingsPage() {
         a.click();
         document.body.removeChild(a);
     };
+
+    const handleAddCategory = async () => {
+        if (!newCategory.trim() || !user || !firestore) return;
+        try {
+            await addDoc(collection(firestore, `users/${user.uid}/categories`), {
+                name: newCategory.trim(),
+                userId: user.uid,
+                type: 'expense' // Defaulting to expense, can be changed later
+            });
+            toast({ title: "Category added", description: `"${newCategory}" has been added.` });
+            setNewCategory('');
+        } catch (error) {
+            console.error("Error adding category:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not add category." });
+        }
+    };
+
+    const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+        if (!user || !firestore) return;
+        try {
+            await deleteDoc(doc(firestore, `users/${user.uid}/categories`, categoryId));
+            toast({ title: "Category deleted", description: `"${categoryName}" has been deleted.` });
+        } catch (error) {
+            console.error("Error deleting category:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not delete category." });
+        }
+    };
+
 
     const yearOptions = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i);
     const monthOptions = Array.from({ length: 12 }, (_, i) => ({ value: i, label: format(new Date(2000, i), 'MMMM') }));
@@ -170,9 +207,14 @@ export default function SettingsPage() {
                         </SheetHeader>
                         <div className="py-4">
                             <div className="flex space-x-2 mb-4">
-                                <Input placeholder="New category name" />
-                                <Button><PlusCircle className="mr-2 h-4 w-4" /> Add Category</Button>
+                                <Input 
+                                    placeholder="New category name" 
+                                    value={newCategory}
+                                    onChange={(e) => setNewCategory(e.target.value)}
+                                />
+                                <Button onClick={handleAddCategory}><PlusCircle className="mr-2 h-4 w-4" /> Add Category</Button>
                             </div>
+                            {categoriesLoading ? <div className="flex justify-center"><Spinner /></div> : (
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -181,16 +223,16 @@ export default function SettingsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {categories.map((category) => (
-                                        <TableRow key={category}>
+                                    {categories?.map((category) => (
+                                        <TableRow key={category.id}>
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
-                                                    <CategoryIcon category={category} className="h-4 w-4 text-muted-foreground" />
-                                                    <span className="font-medium">{category}</span>
+                                                    <CategoryIcon category={category.name} className="h-4 w-4 text-muted-foreground" />
+                                                    <span className="font-medium">{category.name}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon">
+                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id, category.name)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </TableCell>
@@ -198,6 +240,7 @@ export default function SettingsPage() {
                                     ))}
                                 </TableBody>
                             </Table>
+                            )}
                         </div>
                       </SheetContent>
                     </Sheet>

@@ -1,3 +1,4 @@
+
 export type TransactionCategory = 'Income' | 'Food' | 'Shopping' | 'Housing' | 'Transportation' | 'Utilities' | 'Entertainment' | 'Health' | 'Investment' | 'Other' | 'Transfer';
 
 export enum TransactionType {
@@ -43,3 +44,10 @@ export type Goal = {
   currentAmount: number;
   deadline: string;
 };
+
+export type Category = {
+    id: string;
+    name: string;
+    userId: string;
+    type: 'income' | 'expense' | 'investment';
+}
