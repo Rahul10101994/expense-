@@ -33,7 +33,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   return (
     <g>
       <path d={`M${x},${y}L${x2},${y2}`} stroke="hsl(var(--foreground))" fill="none" strokeOpacity={0.5}/>
-      <text x={x2 + (x2 > cx ? 1 : -1) * 12} y={y2} textAnchor={textAnchor} fill="hsl(var(--foreground))" dominantBaseline="central">
+      <text x={x2 + (x2 > cx ? 1 : -1) * 12} y={y2} textAnchor={textAnchor} fill="hsl(var(--foreground))" dominantBaseline="central" className="text-xs">
         {`${payload.category} (${(percent * 100).toFixed(0)}%)`}
       </text>
     </g>
