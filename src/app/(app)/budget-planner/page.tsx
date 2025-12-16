@@ -95,24 +95,25 @@ export default function BudgetPlannerPage() {
 
   useEffect(() => {
     if (budgetsLoading) {
-      return;
+      return; // Wait until loading is complete
     }
-  
+
     if (existingBudgets && existingBudgets.length > 0) {
+      // If budgets exist for the selected month, populate the form
       const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
       const categoryBudgets = expenseCategories.map(cat => {
         const existing = existingBudgets.find(b => b.categoryId === cat);
         return { category: cat, amount: existing?.amount || 0 };
       });
-      
+
       form.reset({
         totalAmount: total,
-        month: selectedMonth,
-        carryForward: false,
+        month: selectedMonth, // Keep the selected month
+        carryForward: false, // Default carryForward to false
         categoryBudgets: categoryBudgets,
       });
     } else {
-      // If no budgets exist for the selected month, reset to default, but keep the selected month.
+      // If no budgets exist, reset to default for the new month, but keep the month selected
       form.reset({
         totalAmount: 0,
         month: selectedMonth,
@@ -121,7 +122,7 @@ export default function BudgetPlannerPage() {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingBudgets, budgetsLoading, selectedMonth]);
+  }, [existingBudgets, budgetsLoading, selectedMonth]); // Depend on data, loading state, and the selected month
 
 
   async function onSubmit(values: z.infer<typeof budgetFormSchema>) {
@@ -231,7 +232,7 @@ export default function BudgetPlannerPage() {
             </Link>
             <div>
                 <CardTitle className="text-lg">Budget Planner</CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   Allocate your budget across different categories for the month.
                 </CardDescription>
             </div>
@@ -356,3 +357,5 @@ export default function BudgetPlannerPage() {
     </div>
   );
 }
+
+    
