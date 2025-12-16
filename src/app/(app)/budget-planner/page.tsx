@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -43,29 +43,25 @@ import type { Budget } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 
 
-const stepOneSchema = z.object({
-  totalAmount: z.coerce.number().positive({
-    message: 'Budget amount must be a positive number.',
-  }),
-  month: z.string().min(1, 'Please select a month'),
-  carryForward: z.boolean().default(false),
-});
-
 const categoryBudgetSchema = z.object({
   category: z.string(),
   amount: z.coerce.number().nonnegative(),
 });
 
-const stepTwoSchema = z.object({
+const budgetFormSchema = z.object({
+  totalAmount: z.coerce.number().positive({
+    message: 'Budget amount must be a positive number.',
+  }),
+  month: z.string().min(1, 'Please select a month'),
+  carryForward: z.boolean().default(false),
   categoryBudgets: z.array(categoryBudgetSchema),
 });
+
 
 const expenseCategories = categories.filter(c => c !== 'Income' && c !== 'Investment');
 
 export default function BudgetPlannerPage() {
-  const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [totalBudget, setTotalBudget] = useState(0);
   const firestore = useFirestore();
   const { user } = useUser();
   const router = useRouter();
@@ -73,23 +69,18 @@ export default function BudgetPlannerPage() {
 
   const currentMonth = format(new Date(), 'yyyy-MM');
 
-  const stepOneForm = useForm<z.infer<typeof stepOneSchema>>({
-    resolver: zodResolver(stepOneSchema),
+  const form = useForm<z.infer<typeof budgetFormSchema>>({
+    resolver: zodResolver(budgetFormSchema),
     defaultValues: {
       totalAmount: 0,
       month: currentMonth,
       carryForward: false,
-    },
-  });
-
-  const stepTwoForm = useForm<z.infer<typeof stepTwoSchema>>({
-    resolver: zodResolver(stepTwoSchema),
-    defaultValues: {
       categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
     },
   });
 
-  const selectedMonth = stepOneForm.watch('month');
+  const selectedMonth = form.watch('month');
+  const totalBudget = form.watch('totalAmount');
 
   const budgetsQuery = useMemoFirebase(() => {
     if (!user || !selectedMonth) return null;
@@ -107,49 +98,34 @@ export default function BudgetPlannerPage() {
 
     if (existingBudgets && existingBudgets.length > 0) {
       const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
-      setTotalBudget(total);
-      stepOneForm.setValue('totalAmount', total);
-
       const categoryBudgets = expenseCategories.map(cat => {
         const existing = existingBudgets.find(b => b.categoryId === cat);
         return { category: cat, amount: existing?.amount || 0 };
       });
-      stepTwoForm.setValue('categoryBudgets', categoryBudgets);
-      setStep(2);
+      form.reset({
+        totalAmount: total,
+        month: selectedMonth,
+        carryForward: false, // Or load this if saved
+        categoryBudgets: categoryBudgets,
+      });
     } else {
-      // Only reset if we've finished loading and confirmed there are no budgets.
-      setStep(1);
-      setTotalBudget(0);
-      stepOneForm.reset({
+      // Only reset if we've finished loading and confirmed there are no budgets for the selected month.
+      form.reset({
         totalAmount: 0,
         month: selectedMonth,
-        carryForward: false
-      });
-      stepTwoForm.reset({
+        carryForward: false,
         categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
       });
     }
-  // We disable the lint rule here because we explicitly want this effect to re-run
-  // only when the data or loading state changes, not on every change to the form objects.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingBudgets, budgetsLoading, selectedMonth]);
 
 
-  const { fields } = useFieldArray({
-    control: stepTwoForm.control,
-    name: 'categoryBudgets',
-  });
-
-  function onStepOneSubmit(values: z.infer<typeof stepOneSchema>) {
-    setTotalBudget(values.totalAmount);
-    setStep(2);
-  }
-  
-  async function onStepTwoSubmit(values: z.infer<typeof stepTwoSchema>) {
+  async function onSubmit(values: z.infer<typeof budgetFormSchema>) {
     if (!user || !firestore) return;
     setIsSubmitting(true);
 
-    const month = stepOneForm.getValues('month');
+    const month = values.month;
     const monthStart = startOfMonth(new Date(month)).toISOString();
 
     try {
@@ -167,11 +143,9 @@ export default function BudgetPlannerPage() {
           };
           
           if (existingBudgetDoc && existingBudgetDoc.id) {
-            // Update existing document
             const docRef = doc(firestore, `users/${user.uid}/budgets`, existingBudgetDoc.id);
             batch.set(docRef, budgetData, { merge: true });
           } else {
-            // Create new document
             const newDocRef = doc(collection(firestore, `users/${user.uid}/budgets`));
             batch.set(newDocRef, budgetData);
           }
@@ -207,7 +181,7 @@ export default function BudgetPlannerPage() {
     };
   });
 
-  const remainingBudget = totalBudget - (stepTwoForm.watch('categoryBudgets')?.reduce((acc, b) => acc + (Number(b.amount) || 0), 0) || 0);
+  const remainingBudget = totalBudget - (form.watch('categoryBudgets')?.reduce((acc, b) => acc + (Number(b.amount) || 0), 0) || 0);
 
   if (budgetsLoading) {
       return (
@@ -230,105 +204,98 @@ export default function BudgetPlannerPage() {
             <div>
                 <CardTitle>Budget Planner</CardTitle>
                 <CardDescription>
-                  {step === 1 ? 'Set a total spending limit for a specific month.' : 'Allocate your budget across categories.'}
+                  Allocate your budget across different categories for the month.
                 </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {step === 1 && (
-            <Form {...stepOneForm}>
-              <form onSubmit={stepOneForm.handleSubmit(onStepOneSubmit)} className="space-y-6">
-                <FormField
-                  control={stepOneForm.control}
-                  name="carryForward"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Carry forward to next month
-                        </FormLabel>
-                         <FormMessage />
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={stepOneForm.control}
-                  name="month"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Month</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                    control={form.control}
+                    name="month"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Month</FormLabel>
+                        <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                        >
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a month" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {monthOptions.map(option => (
+                                <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="totalAmount"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Total Budget for the Month</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a month" />
-                          </SelectTrigger>
+                            <Input
+                            type="number"
+                            placeholder="e.g., 2000.00"
+                            {...field}
+                            />
                         </FormControl>
-                        <SelectContent>
-                          {monthOptions.map(option => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={stepOneForm.control}
-                  name="totalAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Total Budget for the Month</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="e.g., 2000.00"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full">
-                  Next
-                </Button>
-              </form>
-            </Form>
-          )}
-
-          {step === 2 && (
-            <Form {...stepTwoForm}>
-              <form onSubmit={stepTwoForm.handleSubmit(onStepTwoSubmit)} className="space-y-4">
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="carryForward"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 md:col-span-2">
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                Carry forward to next month
+                                </FormLabel>
+                                <FormMessage />
+                            </div>
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                
                  <div className="p-4 bg-secondary rounded-lg text-center">
-                    <p className="text-sm text-secondary-foreground">Total Budget for {format(new Date(stepOneForm.getValues('month')), 'MMMM yyyy')}</p>
+                    <p className="text-sm text-secondary-foreground">Total Budget for {format(new Date(form.getValues('month')), 'MMMM yyyy')}</p>
                     <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalBudget)}</p>
                     <p className="text-sm font-medium text-muted-foreground">Remaining: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(remainingBudget)}</p>
                 </div>
+                
                  <ScrollArea className="h-[300px] pr-4">
                     <div className="space-y-4">
-                    {fields.map((field, index) => (
+                    {expenseCategories.map((category, index) => (
                       <FormField
-                        key={field.id}
-                        control={stepTwoForm.control}
+                        key={category}
+                        control={form.control}
                         name={`categoryBudgets.${index}.amount`}
                         render={({ field: formField }) => (
                           <FormItem>
                             <div className="flex items-center justify-between">
-                              <FormLabel>{expenseCategories[index]}</FormLabel>
+                              <FormLabel>{category}</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -350,15 +317,12 @@ export default function BudgetPlannerPage() {
                     ))}
                     </div>
                 </ScrollArea>
-                <div className="flex gap-4">
-                    <Button variant="outline" onClick={() => setStep(1)} className="w-full">Back</Button>
-                    <Button type="submit" className="w-full" disabled={isSubmitting}>
-                        {isSubmitting ? 'Saving...' : 'Save Budget'}
-                    </Button>
-                </div>
+                
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : 'Save Budget'}
+                </Button>
               </form>
             </Form>
-          )}
         </CardContent>
       </Card>
     </div>
