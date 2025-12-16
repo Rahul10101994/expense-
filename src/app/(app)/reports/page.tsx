@@ -10,12 +10,13 @@ import type { Transaction, Budget, TransactionCategory } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { isSameMonth, isSameYear, startOfMonth, endOfMonth, getYear, getMonth, format } from 'date-fns';
-import { ArrowDown, ArrowUp, PiggyBank } from 'lucide-react';
+import { ArrowDown, ArrowUp, PiggyBank, Download } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
 import BudgetGoals from '@/components/dashboard/budget-goals';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 
@@ -136,6 +137,34 @@ export default function ReportsPage() {
             currency: 'USD',
         }).format(amount);
     };
+
+    const handleDownload = () => {
+        if (!filteredTransactions) return;
+
+        const headers = ["Date", "Description", "Category", "Type", "Amount"];
+        const csvRows = [headers.join(",")];
+
+        for (const transaction of filteredTransactions) {
+            const values = [
+                new Date(transaction.date).toLocaleDateString(),
+                `"${transaction.description.replace(/"/g, '""')}"`,
+                transaction.category,
+                transaction.type,
+                transaction.amount
+            ];
+            csvRows.push(values.join(","));
+        }
+
+        const blob = new Blob([csvRows.join("\n")], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', `report-${getReportTitle().toLowerCase().replace(' ', '-')}.csv`);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
     
     const getReportTitle = () => {
         if (period === 'currentMonth') return 'This Month';
@@ -162,7 +191,7 @@ export default function ReportsPage() {
                     <CardTitle className="text-base">Financial Reports</CardTitle>
                     <CardDescription>Detailed analysis of your financial activity for: <span className="font-semibold capitalize">{getReportTitle()}</span></CardDescription>
                 </CardHeader>
-                <CardContent className="p-2 pt-0 flex gap-2">
+                <CardContent className="p-2 pt-0 flex flex-wrap gap-2 items-center">
                      <Select value={period} onValueChange={(v) => handleFilterChange('period', v)}>
                         <SelectTrigger className="h-8 text-xs">
                             <SelectValue placeholder="Select period" />
@@ -194,6 +223,10 @@ export default function ReportsPage() {
                             </Select>
                         </>
                     )}
+                    <Button variant="outline" size="sm" className="h-8 text-xs ml-auto" onClick={handleDownload}>
+                        <Download className="mr-2 h-3 w-3" />
+                        Download Report
+                    </Button>
                 </CardContent>
             </Card>
 
@@ -271,5 +304,7 @@ export default function ReportsPage() {
             </div>
         </div>
     );
+
+    
 
     
