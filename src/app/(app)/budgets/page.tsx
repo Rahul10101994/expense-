@@ -19,7 +19,6 @@ export default function BudgetsPage() {
             <Card>
                 <CardHeader className="p-2 pt-2">
                     <CardTitle className="text-sm font-medium">Budget by Category</CardTitle>
-                    <CardDescription className="text-xs">Your spending progress for each category this month.</CardDescription>
                 </CardHeader>
             </Card>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
