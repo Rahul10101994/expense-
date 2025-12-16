@@ -78,16 +78,16 @@ export default function SettingsPage() {
     const handleDownload = () => {
         if (!filteredTransactions) return;
 
-        const headers = ["Date", "Description", "Category", "Type", "Amount"];
+        const headers = ["Date", "Type", "Amount", "Category", "Description"];
         const csvRows = [headers.join(",")];
 
         for (const transaction of filteredTransactions) {
             const values = [
                 new Date(transaction.date).toLocaleDateString(),
-                `"${transaction.description.replace(/"/g, '""')}"`,
-                transaction.category,
                 transaction.type,
-                transaction.amount
+                transaction.amount,
+                transaction.category,
+                `"${transaction.description.replace(/"/g, '""')}"`,
             ];
             csvRows.push(values.join(","));
         }
