@@ -100,19 +100,19 @@ export default function DashboardPage() {
        <Link href="/budgets" className="mt-4 block">
           <BudgetGoals budgets={financialData.budgets} />
       </Link>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-12 lg:col-span-5">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+        <Card className="col-span-1 lg:col-span-5">
           <IncomeExpenseChart transactions={financialData.transactions} />
         </Card>
-        <Card className="col-span-12 lg:col-span-2">
+        <Card className="col-span-1 lg:col-span-2">
           <SpendingBreakdownChart transactions={financialData.transactions} />
         </Card>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-12 lg:col-span-4 h-[440px]">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+        <Card className="col-span-1 lg:col-span-4 h-auto lg:h-[440px]">
           <RecentTransactions transactions={financialData.transactions} />
         </Card>
-        <div className="col-span-12 lg:col-span-3 space-y-4">
+        <div className="col-span-1 lg:col-span-3 space-y-4">
             <AiInsights transactions={financialData.transactions} goals={financialData.goals} />
         </div>
       </div>

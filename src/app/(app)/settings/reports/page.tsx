@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -30,7 +29,7 @@ export default function ReportsPage() {
 
     const [period, setPeriod] = useState<Period>(searchParams.get('period') as Period || 'currentMonth');
     const [selectedYear, setSelectedYear] = useState<number>(searchParams.get('year') ? parseInt(searchParams.get('year')!) : getYear(new Date()));
-    const [selectedMonth, setSelectedMonth] = useState<number>(searchParams.get('month') ? parseInt(searchParams.get('month')!) : getMonth(new Date()));
+    const [selectedMonth, setSelectedMonth] = useState<number>(search_params.get('month') ? parseInt(search_params.get('month')!) : getMonth(new Date()));
     
     const handleFilterChange = (type: 'period' | 'year' | 'month', value: string) => {
         const params = new URLSearchParams(searchParams);
@@ -175,7 +174,7 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent className="p-2 pt-0 flex flex-wrap gap-2 items-center">
                      <Select value={period} onValueChange={(v) => handleFilterChange('period', v)}>
-                        <SelectTrigger className="h-8 text-xs">
+                        <SelectTrigger className="h-8 text-xs w-full sm:w-auto flex-1">
                             <SelectValue placeholder="Select period" />
                         </SelectTrigger>
                         <SelectContent>
@@ -188,7 +187,7 @@ export default function ReportsPage() {
                     {period === 'custom' && (
                         <>
                             <Select value={selectedYear.toString()} onValueChange={(v) => handleFilterChange('year', v)}>
-                                <SelectTrigger className="h-8 text-xs">
+                                <SelectTrigger className="h-8 text-xs w-full sm:w-auto flex-1">
                                     <SelectValue placeholder="Select year" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -196,7 +195,7 @@ export default function ReportsPage() {
                                 </SelectContent>
                             </Select>
                             <Select value={selectedMonth.toString()} onValueChange={(v) => handleFilterChange('month', v)}>
-                                <SelectTrigger className="h-8 text-xs">
+                                <SelectTrigger className="h-8 text-xs w-full sm:w-auto flex-1">
                                     <SelectValue placeholder="Select month" />
                                 </SelectTrigger>
                                 <SelectContent>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import AppSidebar from '@/components/layout/app-sidebar';
@@ -43,7 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isMobile) {
     return (
       <>
-        <main className="pb-20 px-4 pt-4">{children}</main>
+        <main className="pb-24 p-4">{children}</main>
         <AppBottomNav />
       </>
     );
