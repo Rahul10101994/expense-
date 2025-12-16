@@ -29,7 +29,7 @@ export default function BudgetGoals({ budgets }: { budgets: Budget[] }) {
 
   return (
     <Card className="mt-4">
-      <CardHeader className="py-2 px-4">
+      <CardHeader className="py-1 px-4">
         <CardTitle className="text-base">Budget Overview</CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-2 space-y-1">
