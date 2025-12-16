@@ -150,7 +150,6 @@ export default function ReportsPage() {
             <Card>
                 <CardHeader className="py-3">
                     <CardTitle>Budget Breakdown</CardTitle>
-                    <CardDescription>Your spending progress for each category for the selected period.</CardDescription>
                 </CardHeader>
             </Card>
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
