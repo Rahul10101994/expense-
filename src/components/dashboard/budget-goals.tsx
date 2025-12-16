@@ -32,13 +32,13 @@ export default function BudgetGoals({ budgets }: { budgets: Budget[] }) {
       <CardHeader className="py-1 px-4">
         <CardTitle className="text-base">Budget Overview</CardTitle>
       </CardHeader>
-      <CardContent className="px-4 pb-2 space-y-1">
+      <CardContent className="px-4 pb-1 space-y-0.5">
          <div className="flex justify-between items-center text-xs text-muted-foreground">
             <span>{formatCurrency(totalSpent)}</span>
             <span>{formatCurrency(totalBudget)}</span>
         </div>
         <Progress value={progress} className="h-2"/>
-        <div className="text-xs text-center text-muted-foreground pt-1">
+        <div className="text-xs text-center text-muted-foreground pt-0.5">
             {formatCurrency(totalLeft)} remaining
         </div>
       </CardContent>
