@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Transaction } from '@/lib/types';
+import type { Transaction, Account } from '@/lib/types';
 import { useUser } from '@/firebase';
 import { isSameMonth, isSameYear } from 'date-fns';
 import Link from 'next/link';
@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall';
 
-export default function OverviewCards({ transactions }: { transactions: Transaction[] }) {
+export default function OverviewCards({ transactions, accounts }: { transactions: Transaction[], accounts: Account[] }) {
   const { user } = useUser();
   const [period, setPeriod] = useState<Period>('currentMonth');
 
@@ -33,7 +33,7 @@ export default function OverviewCards({ transactions }: { transactions: Transact
     return transactions;
   }, [transactions, period]);
 
-  const { balance, income, expenses } = useMemo(() => {
+  const { income, expenses } = useMemo(() => {
     let income = 0;
     let expenses = 0;
 
@@ -45,9 +45,12 @@ export default function OverviewCards({ transactions }: { transactions: Transact
       }
     });
 
-    const balance = income + expenses;
-    return { balance, income, expenses };
+    return { income, expenses };
   }, [filteredTransactions]);
+
+  const totalBalance = useMemo(() => {
+    return accounts.reduce((acc, account) => acc + account.balance, 0);
+  }, [accounts]);
   
 
   const formatCurrency = (amount: number) => {
@@ -68,7 +71,7 @@ export default function OverviewCards({ transactions }: { transactions: Transact
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
             <div>
               <CardTitle className="text-sm font-medium">{getDisplayName()}</CardTitle>
-               <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
+               <div className="text-2xl font-bold">{formatCurrency(totalBalance)}</div>
             </div>
             <div className="w-[140px]">
                 <Select onValueChange={(value: Period) => setPeriod(value)} defaultValue={period}>

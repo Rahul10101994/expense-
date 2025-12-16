@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-ch
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import Link from 'next/link';
 import { collection, query, where } from 'firebase/firestore';
-import type { Transaction, Budget, Goal } from '@/lib/types';
+import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { useMemo } from 'react';
 
@@ -27,6 +28,13 @@ export default function DashboardPage() {
     
     const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
     
+    const accountsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, `users/${user.uid}/accounts`);
+    }, [firestore, user]);
+
+    const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
+
     const budgets = useMemo(() => {
         if (!transactions) return [];
 
@@ -64,7 +72,7 @@ export default function DashboardPage() {
       { id: '3', name: 'New Laptop', targetAmount: 2000, currentAmount: 1800, deadline: '2024-12-01' },
     ];
 
-    if (transactionsLoading) {
+    if (transactionsLoading || accountsLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Spinner size="large" />
@@ -74,6 +82,7 @@ export default function DashboardPage() {
     
     const financialData = {
         transactions: transactions || [],
+        accounts: accounts || [],
         budgets,
         goals,
     };
@@ -81,7 +90,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 space-y-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <OverviewCards transactions={financialData.transactions} />
+        <OverviewCards transactions={financialData.transactions} accounts={financialData.accounts} />
       </div>
        <Link href="/budgets" className="mt-4 block">
           <BudgetGoals budgets={financialData.budgets} />
