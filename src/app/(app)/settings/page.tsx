@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CategoryIcon } from '@/lib/icons';
-import { PlusCircle, Trash2, Download } from 'lucide-react';
+import { PlusCircle, Trash2, Download, AlertTriangle } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -15,9 +15,20 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, addDoc } from 'firebase/firestore';
-import type { Transaction, Category } from '@/lib/types';
+import { collection, doc, deleteDoc, addDoc, getDocs, writeBatch } from 'firebase/firestore';
+import type { Transaction, Category, Account, Budget, Goal } from '@/lib/types';
 import { useMemo, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isSameMonth, isSameYear, getYear, getMonth, format } from 'date-fns';
@@ -35,6 +46,7 @@ export default function SettingsPage() {
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
     const [newCategory, setNewCategory] = useState('');
+    const [isClearing, setIsClearing] = useState(false);
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -127,6 +139,36 @@ export default function SettingsPage() {
         } catch (error) {
             console.error("Error deleting category:", error);
             toast({ variant: 'destructive', title: "Error", description: "Could not delete category." });
+        }
+    };
+
+    const handleClearRecords = async () => {
+        if (!user || !firestore) return;
+        setIsClearing(true);
+
+        try {
+            const batch = writeBatch(firestore);
+
+            const collectionsToDelete = ['accounts', 'budgets', 'categories', 'goals'];
+            for (const col of collectionsToDelete) {
+                const querySnapshot = await getDocs(collection(firestore, `users/${user.uid}/${col}`));
+                querySnapshot.forEach(doc => batch.delete(doc.ref));
+            }
+            
+            // Special handling for transactions subcollection
+            const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
+            for (const accountDoc of accountsSnapshot.docs) {
+                const transactionsSnapshot = await getDocs(collection(accountDoc.ref, 'transactions'));
+                transactionsSnapshot.forEach(transactionDoc => batch.delete(transactionDoc.ref));
+            }
+
+            await batch.commit();
+            toast({ title: "Records Cleared", description: "All your data has been successfully cleared." });
+        } catch (error) {
+            console.error("Error clearing records:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not clear all records." });
+        } finally {
+            setIsClearing(false);
         }
     };
 
@@ -244,6 +286,37 @@ export default function SettingsPage() {
                         </div>
                       </SheetContent>
                     </Sheet>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Clear Data</CardTitle>
+                    <CardDescription>Permanently delete all your financial records. This action cannot be undone.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Clear All Records
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle/>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete all your accounts, transactions, budgets, and goals data from our servers.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleClearRecords} disabled={isClearing}>
+                                {isClearing ? <Spinner className="mr-2" /> : null}
+                                Yes, delete everything
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </CardContent>
             </Card>
         </div>
