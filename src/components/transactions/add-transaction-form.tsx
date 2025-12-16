@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { categories } from '@/lib/data';
-import { TransactionType, type Transaction } from '@/lib/types';
+import { TransactionType, type Transaction, type Account } from '@/lib/types';
 import { PlusCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -39,6 +39,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, doc, writeBatch } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   description: z.string().min(2, {
@@ -46,6 +49,9 @@ const formSchema = z.object({
   }),
   amount: z.coerce.number().positive({
     message: 'Amount must be a positive number.',
+  }),
+  accountId: z.string({
+    required_error: 'Please select an account.',
   }),
   category: z.string({
     required_error: 'Please select a category.',
@@ -57,12 +63,23 @@ const formSchema = z.object({
 });
 
 type AddTransactionFormProps = {
-  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'accountId'>) => void;
+  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   children?: ReactNode;
 };
 
 export default function AddTransactionForm({ onAddTransaction, children }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const firestore = useFirestore();
+  const { user } = useUser();
+
+  const accountsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/accounts`);
+  }, [firestore, user]);
+
+  const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -73,17 +90,58 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const amount = values.type === 'expense' || values.type === 'investment' ? -values.amount : values.amount;
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!firestore || !user || !accounts) return;
 
-    onAddTransaction({
+    const { accountId, amount, type } = values;
+    const selectedAccount = accounts.find(acc => acc.id === accountId);
+
+    if (!selectedAccount) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Selected account not found.',
+        });
+        return;
+    }
+
+    const transactionAmount = type === 'income' ? amount : -amount;
+    const newBalance = selectedAccount.balance + transactionAmount;
+
+    const newTransactionData = {
       ...values,
-      amount,
+      amount: transactionAmount,
       date: values.date.toISOString(),
       category: values.category as Transaction['category'],
-    });
-    setOpen(false);
-    form.reset();
+    };
+
+    const batch = writeBatch(firestore);
+    
+    // 1. Create new transaction document
+    const transactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`));
+    batch.set(transactionRef, newTransactionData);
+
+    // 2. Update account balance
+    const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountId);
+    batch.update(accountRef, { balance: newBalance });
+
+    try {
+        await batch.commit();
+        onAddTransaction(newTransactionData);
+        toast({
+            title: 'Transaction Added',
+            description: `${values.description} has been successfully recorded.`,
+        });
+        setOpen(false);
+        form.reset();
+    } catch (error) {
+        console.error('Error adding transaction:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to add transaction. Please try again.',
+        });
+    }
   }
 
   return (
@@ -174,6 +232,34 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                         </FormItem>
                     )}
                     />
+                     <FormField
+                        control={form.control}
+                        name="accountId"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Account</FormLabel>
+                            <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                disabled={accountsLoading}
+                            >
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select an account" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {accounts?.map((account) => (
+                                    <SelectItem key={account.id} value={account.id}>
+                                    {account.name}
+                                    </SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                     <FormField
                     control={form.control}
                     name="category"
@@ -208,7 +294,18 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                         <FormItem>
                         <FormLabel>Type</FormLabel>
                         <Select
-                            onValueChange={field.onChange}
+                            onValueChange={(value) => {
+                                field.onChange(value);
+                                const isExpense = value === TransactionType.Expense || value === TransactionType.Investment;
+                                const incomeCategories = ['Income'];
+                                const expenseCategories = categories.filter(c => c !== 'Income');
+                                
+                                if(isExpense && incomeCategories.includes(form.getValues('category'))) {
+                                    form.setValue('category', '');
+                                } else if (!isExpense && expenseCategories.includes(form.getValues('category'))) {
+                                    form.setValue('category', '');
+                                }
+                            }}
                             defaultValue={field.value}
                         >
                             <FormControl>

@@ -8,17 +8,29 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading, userError } = useUser();
   const router = useRouter();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    if (userError) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: userError.message,
+      });
+    }
+  }, [userError, toast]);
 
   if (isUserLoading || !user) {
     return (
@@ -31,7 +43,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isMobile) {
     return (
       <>
-        <main className="pb-20 px-4">{children}</main>
+        <main className="pb-20 px-4 pt-4">{children}</main>
         <AppBottomNav />
       </>
     );

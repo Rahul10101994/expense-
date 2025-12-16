@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -13,11 +13,10 @@ import {
 import AddTransactionForm from '@/components/transactions/add-transaction-form';
 import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
-import type { Transaction } from '@/lib/types';
+import type { Transaction, Account } from '@/lib/types';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
 import { Spinner } from '@/components/ui/spinner';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
@@ -28,21 +27,15 @@ export default function TransactionsPage() {
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        // Assuming there is one account per user for simplicity for now
-        // A more robust solution would involve account selection
-        return collection(firestore, `users/${user.uid}/accounts/default/transactions`);
+        return query(collectionGroup(firestore, 'transactions'), where('userId', '==', user.uid));
     }, [firestore, user]);
-
+    
     const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);
 
-    const handleAddTransaction = (newTransaction: Omit<Transaction, 'id' | 'accountId'>) => {
-        if (!transactionsQuery) return;
-        
-        const transactionData = {
-            ...newTransaction,
-            accountId: 'default', // Hardcoding default account
-        };
-        addDocumentNonBlocking(transactionsQuery, transactionData);
+    const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
+        // The form now handles adding the document.
+        // We can use this callback to optimistically update the UI if needed,
+        // but for now, we'll let the real-time listener handle it.
     };
     
     const allTransactions = transactions ? [...transactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()) : [];
