@@ -100,13 +100,13 @@ export default function OverviewCards({ transactions }: { transactions: Transact
         <Link href={`/reports?period=${period}`}>
             <CardContent className="space-y-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg p-4">
               <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{formatCurrency(balance)}</div>
-              <div className="flex justify-between text-xs text-gray-600 dark:text-gray-300">
-                  <div className='flex flex-col'>
-                        <span>Income</span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className='flex flex-col bg-gray-200 dark:bg-gray-700 p-2 rounded-md'>
+                        <span className="text-gray-600 dark:text-gray-300">Income</span>
                         <span className="text-green-600 dark:text-green-400 font-medium">{formatCurrency(income)}</span>
-                  </div>
-                    <div className='flex flex-col items-end'>
-                        <span>Expenses</span>
+                    </div>
+                    <div className='flex flex-col items-start bg-gray-200 dark:bg-gray-700 p-2 rounded-md'>
+                         <span className="text-gray-600 dark:text-gray-300">Expenses</span>
                         <span className="text-red-600 dark:text-red-400 font-medium">{formatCurrency(Math.abs(expenses))}</span>
                     </div>
               </div>
