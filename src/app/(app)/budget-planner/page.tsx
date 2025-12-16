@@ -311,7 +311,7 @@ export default function BudgetPlannerPage() {
                 </div>
                 
                  <ScrollArea className="h-[300px] pr-4">
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                     {expenseCategories.map((category, index) => (
                       <FormField
                         key={category}
