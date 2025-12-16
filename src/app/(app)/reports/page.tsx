@@ -159,16 +159,16 @@ export default function ReportsPage() {
                     return (
                         <Card key={budget.category}>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
-                                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                <CardTitle className="text-xs font-medium flex items-center gap-2">
                                     <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
                                     {budget.category}
                                 </CardTitle>
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-xs text-muted-foreground">
                                     {formatCurrency(budget.limit)}
                                 </span>
                             </CardHeader>
                             <CardContent className="pb-3">
-                                <div className="text-2xl font-bold">{formatCurrency(budget.spent)}</div>
+                                <div className="text-lg font-bold">{formatCurrency(budget.spent)}</div>
                                 <p className="text-xs text-muted-foreground">
                                     {formatCurrency(remaining)} remaining
                                 </p>
