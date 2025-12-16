@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Pie, PieChart } from "recharts"
+import { Pie, PieChart, Cell } from "recharts"
 
 import {
   CardContent,
@@ -16,6 +16,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { Transaction } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 export default function SpendingBreakdownChart({ transactions }: { transactions: Transaction[] }) {
     const expenses = transactions.filter(t => t.type === 'expense');
@@ -23,10 +24,11 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
     const spendingByCategory = React.useMemo(() => {
         const categoryMap: { [key: string]: number } = {};
         expenses.forEach(t => {
-            if (categoryMap[t.category]) {
-                categoryMap[t.category] += Math.abs(t.amount);
+            const categoryKey = t.category || 'Other';
+            if (categoryMap[categoryKey]) {
+                categoryMap[categoryKey] += Math.abs(t.amount);
             } else {
-                categoryMap[t.category] = Math.abs(t.amount);
+                categoryMap[categoryKey] = Math.abs(t.amount);
             }
         });
 
@@ -45,20 +47,27 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
         return spendingByCategory.reduce((acc, curr) => acc + curr.amount, 0);
     }, [spendingByCategory]);
 
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        }).format(amount);
+    };
 
   return (
     <>
-      <CardHeader className="items-center py-2">
-        <CardTitle className="text-sm font-medium">Spending Breakdown</CardTitle>
+      <CardHeader className="items-center pb-0">
+        <CardTitle>Spending Breakdown</CardTitle>
+        <CardDescription>Spending by category</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[150px]"
+          className="mx-auto aspect-square max-h-[250px]"
         >
           <PieChart>
             <ChartTooltip
-              cursor={true}
+              cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
             <Pie
@@ -66,11 +75,28 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
               dataKey="amount"
               nameKey="category"
               innerRadius="60%"
-              strokeWidth={2}
+              strokeWidth={5}
             >
+               {spendingByCategory.map((entry) => (
+                <Cell key={`cell-${entry.category}`} fill={entry.fill} />
+              ))}
             </Pie>
           </PieChart>
         </ChartContainer>
+      </CardContent>
+      <CardContent className="mt-2 text-sm">
+        <div className="grid gap-2">
+            {spendingByCategory.map((item) => {
+                 const percentage = totalSpent > 0 ? ((item.amount / totalSpent) * 100).toFixed(0) : 0;
+                 return (
+                    <div key={item.category} className="flex items-center">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: item.fill }} />
+                        <div className="ml-2 flex-1 truncate">{item.category}</div>
+                        <div className="font-medium">{formatCurrency(item.amount)}</div>
+                    </div>
+                 )
+            })}
+        </div>
       </CardContent>
     </>
   )
