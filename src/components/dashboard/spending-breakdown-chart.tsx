@@ -59,7 +59,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
         <div className="flex items-center justify-center">
             <ChartContainer
                 config={chartConfig}
-                className="aspect-square h-[160px]"
+                className="aspect-square h-[100px]"
                 >
                 <PieChart>
                     <ChartTooltip
@@ -70,9 +70,9 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                         data={spendingByCategory}
                         dataKey="amount"
                         nameKey="category"
-                        innerRadius="60%"
+                        innerRadius="50%"
                         strokeWidth={5}
-                        outerRadius={70}
+                        outerRadius={40}
                     >
                     {spendingByCategory.map((entry) => (
                         <Cell key={`cell-${entry.category}`} fill={entry.fill} />
