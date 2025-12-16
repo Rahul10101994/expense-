@@ -43,24 +43,42 @@ import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebas
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
-const formSchema = z.object({
+const baseSchema = z.object({
   description: z.string().min(2, {
     message: 'Description must be at least 2 characters.',
   }),
   amount: z.coerce.number().positive({
     message: 'Amount must be a positive number.',
   }),
+  date: z.date({
+    required_error: 'A date is required.',
+  }),
+});
+
+const incomeExpenseSchema = baseSchema.extend({
+  type: z.enum([TransactionType.Income, TransactionType.Expense]),
   accountId: z.string({
     required_error: 'Please select an account.',
   }),
   category: z.string({
     required_error: 'Please select a category.',
   }),
-  type: z.nativeEnum(TransactionType),
-  date: z.date({
-    required_error: 'A date is required.',
+});
+
+const transferSchema = baseSchema.extend({
+  type: z.literal(TransactionType.Transfer),
+  fromAccountId: z.string({
+    required_error: 'Please select the source account.',
+  }),
+  toAccountId: z.string({
+    required_error: 'Please select the destination account.',
   }),
 });
+
+const formSchema = z.discriminatedUnion("type", [
+    incomeExpenseSchema,
+    transferSchema,
+]);
 
 type AddTransactionFormProps = {
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
@@ -83,64 +101,124 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      type: TransactionType.Expense,
       description: '',
       amount: 0,
-      type: TransactionType.Expense,
       date: new Date(),
     },
   });
 
+  const transactionType = form.watch('type');
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!firestore || !user || !accounts) return;
-
-    const { accountId, amount, type } = values;
-    const selectedAccount = accounts.find(acc => acc.id === accountId);
-
-    if (!selectedAccount) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Selected account not found.',
-        });
-        return;
-    }
-
-    const transactionAmount = type === 'income' ? amount : -amount;
-    const newBalance = selectedAccount.balance + transactionAmount;
-
-    const newTransactionData = {
-      ...values,
-      amount: transactionAmount,
-      date: values.date.toISOString(),
-      category: values.category as Transaction['category'],
-    };
-
     const batch = writeBatch(firestore);
-    
-    // 1. Create new transaction document
-    const transactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`));
-    batch.set(transactionRef, newTransactionData);
 
-    // 2. Update account balance
-    const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountId);
-    batch.update(accountRef, { balance: newBalance });
+    if (values.type === TransactionType.Transfer) {
+      const { fromAccountId, toAccountId, amount, date, description } = values;
+      const fromAccount = accounts.find(acc => acc.id === fromAccountId);
+      const toAccount = accounts.find(acc => acc.id === toAccountId);
 
-    try {
+      if (!fromAccount || !toAccount) {
+        toast({ variant: 'destructive', title: 'Error', description: 'One or more accounts not found.' });
+        return;
+      }
+      if (fromAccountId === toAccountId) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Source and destination accounts cannot be the same.' });
+        return;
+      }
+
+      // Create two transactions for the transfer
+      const expenseTransactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${fromAccountId}/transactions`));
+      batch.set(expenseTransactionRef, {
+        description: `Transfer to ${toAccount.name}`,
+        amount: -amount,
+        date: date.toISOString(),
+        type: TransactionType.Expense,
+        category: 'Transfer',
+        accountId: fromAccountId,
+        userId: user.uid,
+      });
+
+      const incomeTransactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${toAccountId}/transactions`));
+      batch.set(incomeTransactionRef, {
+        description: `Transfer from ${fromAccount.name}`,
+        amount: amount,
+        date: date.toISOString(),
+        type: TransactionType.Income,
+        category: 'Transfer',
+        accountId: toAccountId,
+        userId: user.uid,
+      });
+
+      // Update balances
+      const fromAccountRef = doc(firestore, `users/${user.uid}/accounts`, fromAccountId);
+      batch.update(fromAccountRef, { balance: fromAccount.balance - amount });
+      const toAccountRef = doc(firestore, `users/${user.uid}/accounts`, toAccountId);
+      batch.update(toAccountRef, { balance: toAccount.balance + amount });
+      
+      try {
         await batch.commit();
-        onAddTransaction(newTransactionData);
+        toast({
+            title: 'Transfer Successful',
+            description: `Transferred ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)} from ${fromAccount.name} to ${toAccount.name}.`,
+        });
+        setOpen(false);
+        form.reset();
+      } catch(e) {
+         console.error('Error completing transfer:', e);
+          toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: 'Failed to complete transfer. Please try again.',
+          });
+      }
+
+    } else { // Income or Expense
+      const { accountId, amount, type, ...rest } = values;
+      const selectedAccount = accounts.find(acc => acc.id === accountId);
+
+      if (!selectedAccount) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Selected account not found.' });
+        return;
+      }
+
+      const transactionAmount = type === 'income' ? amount : -amount;
+      const newBalance = selectedAccount.balance + transactionAmount;
+
+      const newTransactionData = {
+        ...rest,
+        type,
+        amount: transactionAmount,
+        date: values.date.toISOString(),
+        category: values.category as Transaction['category'],
+        accountId,
+        userId: user.uid,
+      };
+
+      const transactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`));
+      batch.set(transactionRef, newTransactionData);
+
+      const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountId);
+      batch.update(accountRef, { balance: newBalance });
+
+      try {
+        await batch.commit();
+        onAddTransaction(newTransactionData as Omit<Transaction, 'id'>);
         toast({
             title: 'Transaction Added',
             description: `${values.description} has been successfully recorded.`,
         });
         setOpen(false);
         form.reset();
-    } catch (error) {
+      } catch (error) {
         console.error('Error adding transaction:', error);
         toast({
             variant: 'destructive',
             title: 'Error',
             description: 'Failed to add transaction. Please try again.',
         });
+      }
     }
   }
 
@@ -162,173 +240,208 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-full">
-            <div className="p-6 pt-0">
-                <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="p-6 pt-2">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel>Type</FormLabel>
+                      <FormControl>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button
+                            type="button"
+                            variant={field.value === TransactionType.Income ? 'default' : 'outline'}
+                            onClick={() => { field.onChange(TransactionType.Income); form.setValue('category', 'Income'); }}
+                          >
+                            Income
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={field.value === TransactionType.Expense ? 'default' : 'outline'}
+                            onClick={() => { field.onChange(TransactionType.Expense); form.setValue('category', 'Food'); }}
+                          >
+                            Expense
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={field.value === TransactionType.Transfer ? 'default' : 'outline'}
+                            onClick={() => { field.onChange(TransactionType.Transfer); }}
+                          >
+                            Transfer
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Groceries" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Amount</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 50.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Transaction Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {transactionType === TransactionType.Transfer ? (
+                  <>
                     <FormField
                       control={form.control}
-                      name="type"
+                      name="fromAccountId"
                       render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>Type</FormLabel>
-                          <FormControl>
-                            <div className="grid grid-cols-3 gap-2">
-                                <Button
-                                    type="button"
-                                    variant={field.value === TransactionType.Income ? 'default' : 'outline'}
-                                    onClick={() => field.onChange(TransactionType.Income)}
-                                >
-                                    Income
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={field.value === TransactionType.Expense ? 'default' : 'outline'}
-                                    onClick={() => field.onChange(TransactionType.Expense)}
-                                >
-                                    Expense
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={field.value === TransactionType.Transfer ? 'default' : 'outline'}
-                                    onClick={() => field.onChange(TransactionType.Transfer)}
-                                >
-                                    Transfer
-                                </Button>
-                            </div>
-                          </FormControl>
+                        <FormItem>
+                          <FormLabel>From Account</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {accounts?.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                     <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
+                      control={form.control}
+                      name="toAccountId"
+                      render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Groceries" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="amount"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Amount</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="e.g., 50.00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="date"
-                        render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Transaction Date</FormLabel>
-                            <Popover>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                    )}
-                                >
-                                    {field.value ? (
-                                    format(field.value, "PPP")
-                                    ) : (
-                                    <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) =>
-                                    date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                                />
-                            </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                     <FormField
-                        control={form.control}
-                        name="accountId"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Account</FormLabel>
-                            <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                                disabled={accountsLoading}
-                            >
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select an account" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {accounts?.map((account) => (
-                                    <SelectItem key={account.id} value={account.id}>
-                                    {account.name}
-                                    </SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                        >
+                          <FormLabel>To Account</FormLabel>
+                           <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
                             <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
+                              <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {categories.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                {category}
-                                </SelectItem>
-                            ))}
+                              {accounts?.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                              ))}
                             </SelectContent>
-                        </Select>
-                        <FormMessage />
+                          </Select>
+                          <FormMessage />
                         </FormItem>
-                    )}
+                      )}
                     />
-                    
-                    <DialogFooter className="p-6 pt-0">
-                        <Button type="submit">Add Transaction</Button>
-                    </DialogFooter>
-                </form>
-                </Form>
-            </div>
+                  </>
+                ) : (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="accountId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Account</FormLabel>
+                           <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {accounts?.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {categories
+                                .filter(c => transactionType === 'income' ? c === 'Income' : c !== 'Income')
+                                .map((category) => (
+                                <SelectItem key={category} value={category}>{category}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+                
+                <DialogFooter className="p-6 pt-0">
+                  <Button type="submit">Add Transaction</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>

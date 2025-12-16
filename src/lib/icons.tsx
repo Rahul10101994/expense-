@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, Utensils, Home, Car, Tv, HeartPulse, Landmark, BrainCircuit, Wallet, AreaChart, type LucideIcon } from 'lucide-react';
+import { ShoppingCart, Utensils, Home, Car, Tv, HeartPulse, Landmark, BrainCircuit, Wallet, AreaChart, ArrowRightLeft, type LucideIcon } from 'lucide-react';
 
 export const categoryIcons: { [key: string]: LucideIcon } = {
   'Income': Wallet,
@@ -11,6 +11,7 @@ export const categoryIcons: { [key: string]: LucideIcon } = {
   'Entertainment': Tv,
   'Health': HeartPulse,
   'Investment': AreaChart,
+  'Transfer': ArrowRightLeft,
   'Other': BrainCircuit,
 };
 

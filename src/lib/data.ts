@@ -40,5 +40,6 @@ export const categories: TransactionCategory[] = [
   'Entertainment',
   'Health',
   'Investment',
+  'Transfer',
   'Other',
 ];
