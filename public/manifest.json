@@ -4,8 +4,8 @@
   "description": "Your personal finance dashboard.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f0f2f5",
-  "theme_color": "#6366f1",
+  "background_color": "#ffffff",
+  "theme_color": "#5A67D8",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",

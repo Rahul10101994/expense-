@@ -34,13 +34,9 @@ const nextConfig: NextConfig = {
 
 const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
+  register: true,
+  skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
-  // Exclude PWA processing when using Turbopack
-  ...(process.env.TURBOPACK && {
-    webpack: (config: any) => {
-      return config;
-    },
-  }),
 });
 
 export default withPWA(nextConfig);
