@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Pie, PieChart, Cell } from "recharts"
+import { Pie, PieChart, Cell, Tooltip } from "recharts"
 
 import {
   CardContent,
@@ -16,7 +16,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { Transaction } from "@/lib/types"
-import { cn } from "@/lib/utils"
 
 export default function SpendingBreakdownChart({ transactions }: { transactions: Transaction[] }) {
     const expenses = transactions.filter(t => t.type === 'expense');
@@ -42,10 +41,6 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
     const chartConfig = Object.fromEntries(spendingByCategory.map((item, index) => [
         item.category, {label: item.category, color: `hsl(var(--chart-${index + 1}))`}
     ]));
-    
-    const totalSpent = React.useMemo(() => {
-        return spendingByCategory.reduce((acc, curr) => acc + curr.amount, 0);
-    }, [spendingByCategory]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -56,46 +51,45 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
 
   return (
     <>
-      <CardHeader className="items-center pb-0">
+      <CardHeader>
         <CardTitle>Spending Breakdown</CardTitle>
         <CardDescription>Spending by category</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
-        <ChartContainer
-          config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
-        >
-          <PieChart>
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Pie
-              data={spendingByCategory}
-              dataKey="amount"
-              nameKey="category"
-              innerRadius="60%"
-              strokeWidth={5}
-            >
-               {spendingByCategory.map((entry) => (
-                <Cell key={`cell-${entry.category}`} fill={entry.fill} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ChartContainer>
-      </CardContent>
-      <CardContent className="mt-2 text-sm">
-        <div className="grid gap-2">
-            {spendingByCategory.map((item) => {
-                 const percentage = totalSpent > 0 ? ((item.amount / totalSpent) * 100).toFixed(0) : 0;
-                 return (
-                    <div key={item.category} className="flex items-center">
-                        <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: item.fill }} />
-                        <div className="ml-2 flex-1 truncate">{item.category}</div>
-                        <div className="font-medium">{formatCurrency(item.amount)}</div>
+      <CardContent className="grid md:grid-cols-2 gap-4">
+        <div className="flex items-center justify-center">
+            <ChartContainer
+                config={chartConfig}
+                className="aspect-square h-[250px]"
+                >
+                <PieChart>
+                    <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent hideLabel />}
+                    />
+                    <Pie
+                    data={spendingByCategory}
+                    dataKey="amount"
+                    nameKey="category"
+                    innerRadius="60%"
+                    strokeWidth={5}
+                    >
+                    {spendingByCategory.map((entry) => (
+                        <Cell key={`cell-${entry.category}`} fill={entry.fill} />
+                    ))}
+                    </Pie>
+                </PieChart>
+            </ChartContainer>
+        </div>
+        <div className="flex flex-col justify-center gap-2 text-sm">
+            {spendingByCategory.map((item) => (
+                <div key={item.category} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.fill }} />
+                        <span className="truncate text-muted-foreground">{item.category}</span>
                     </div>
-                 )
-            })}
+                    <span className="font-medium">{formatCurrency(item.amount)}</span>
+                </div>
+            ))}
         </div>
       </CardContent>
     </>
