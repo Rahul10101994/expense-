@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -83,7 +82,7 @@ export default function BudgetPlannerPage() {
     };
 
     try {
-      await addDocumentNonBlocking(budgetsCollection, newBudget);
+      addDocumentNonBlocking(budgetsCollection, newBudget);
       toast({
         title: 'Budget Added',
         description: `Your budget for ${values.category} has been set.`,
@@ -95,6 +94,7 @@ export default function BudgetPlannerPage() {
         title: 'Error',
         description: 'Failed to add budget.',
       });
+    } finally {
       setIsSubmitting(false);
     }
   }
