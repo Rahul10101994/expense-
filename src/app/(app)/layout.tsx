@@ -31,7 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isMobile) {
     return (
       <>
-        <main className="pb-20">{children}</main>
+        <main className="pb-20 px-4">{children}</main>
         <AppBottomNav />
       </>
     );
