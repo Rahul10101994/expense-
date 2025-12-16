@@ -59,7 +59,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
         <div className="flex items-center justify-center">
             <ChartContainer
                 config={chartConfig}
-                className="aspect-square h-[250px]"
+                className="aspect-square h-[150px]"
                 >
                 <PieChart>
                     <ChartTooltip
