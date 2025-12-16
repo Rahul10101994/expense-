@@ -133,9 +133,9 @@ export default function ReportsPage() {
     }, [filteredTransactions]);
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat('en-IN', {
             style: 'currency',
-            currency: 'USD',
+            currency: 'INR',
         }).format(amount);
     };
 
@@ -243,7 +243,7 @@ export default function ReportsPage() {
 
             <Card>
                 <CardHeader className="py-2">
-                    <CardTitle className="text-sm">Budget Breakdown</CardTitle>
+                    <CardTitle className="text-xs">Budget Breakdown</CardTitle>
                 </CardHeader>
             </Card>
              <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">

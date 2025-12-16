@@ -132,39 +132,12 @@ export default function ReportsPage() {
     }, [filteredTransactions]);
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat('en-IN', {
             style: 'currency',
-            currency: 'USD',
+            currency: 'INR',
         }).format(amount);
     };
 
-    const handleDownload = () => {
-        if (!filteredTransactions) return;
-
-        const headers = ["Date", "Description", "Category", "Type", "Amount"];
-        const csvRows = [headers.join(",")];
-
-        for (const transaction of filteredTransactions) {
-            const values = [
-                new Date(transaction.date).toLocaleDateString(),
-                `"${transaction.description.replace(/"/g, '""')}"`,
-                transaction.category,
-                transaction.type,
-                transaction.amount
-            ];
-            csvRows.push(values.join(","));
-        }
-
-        const blob = new Blob([csvRows.join("\n")], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.setAttribute('hidden', '');
-        a.setAttribute('href', url);
-        a.setAttribute('download', `report-${getReportTitle().toLowerCase().replace(' ', '-')}.csv`);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    };
     
     const getReportTitle = () => {
         if (period === 'currentMonth') return 'This Month';
@@ -223,10 +196,6 @@ export default function ReportsPage() {
                             </Select>
                         </>
                     )}
-                    <Button variant="outline" size="sm" className="h-8 text-xs ml-auto" onClick={handleDownload}>
-                        <Download className="mr-2 h-3 w-3" />
-                        Download Report
-                    </Button>
                 </CardContent>
             </Card>
 
@@ -282,7 +251,7 @@ export default function ReportsPage() {
                     const remaining = budget.limit - budget.spent;
                     return (
                         <Card key={budget.category}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pt-1">
                                 <CardTitle className="text-xs font-medium flex items-center gap-2">
                                     <CategoryIcon category={budget.category} className="h-3 w-3 text-muted-foreground" />
                                     {budget.category}
@@ -308,3 +277,4 @@ export default function ReportsPage() {
     
 
     
+

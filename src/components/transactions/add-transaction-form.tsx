@@ -161,7 +161,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
         await batch.commit();
         toast({
             title: 'Transfer Successful',
-            description: `Transferred ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)} from ${fromAccount.name} to ${toAccount.name}.`,
+            description: `Transferred ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${fromAccount.name} to ${toAccount.name}.`,
         });
         setOpen(false);
         form.reset();
