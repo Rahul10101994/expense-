@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -143,7 +144,7 @@ export default function BudgetPlannerPage() {
     };
   });
 
-  const remainingBudget = totalBudget - (stepTwoForm.watch('categoryBudgets')?.reduce((acc, b) => acc + (b.amount || 0), 0) || 0);
+  const remainingBudget = totalBudget - (stepTwoForm.watch('categoryBudgets')?.reduce((acc, b) => acc + (Number(b.amount) || 0), 0) || 0);
 
   return (
     <div className="max-w-2xl mx-auto">
