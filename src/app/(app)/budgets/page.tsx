@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
 import BudgetGoals from '@/components/dashboard/budget-goals';
@@ -78,41 +78,54 @@ export default function BudgetsPage() {
 
     return (
         <div className="space-y-4">
-            <BudgetGoals budgets={budgets} />
             <Card>
-                <SpendingBreakdownChart transactions={transactions || []} />
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between p-2 pt-2">
-                    <CardTitle className="text-sm font-medium">Budget by Category</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Budgets</CardTitle>
+                        <CardDescription>Create and manage your monthly budgets.</CardDescription>
+                    </div>
                     <AddBudgetForm />
                 </CardHeader>
             </Card>
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                {budgets.map((budget) => {
-                    const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
-                    const isOverBudget = progress >= 100;
 
-                    return (
-                        <Card key={budget.category} className="p-3">
-                            <div className="flex items-center justify-between gap-2 text-xs mb-2">
-                                <div className="flex items-center gap-2 font-medium">
-                                    <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
-                                    <span className="truncate">{budget.category}</span>
-                                </div>
-                                <div className="text-muted-foreground shrink-0">
-                                    {formatCurrency(budget.spent)} / {formatCurrency(budget.limit)}
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Progress value={progress} className={cn("h-2 flex-1", { '[&>div]:bg-destructive': isOverBudget })} />
-                                <span className={cn("text-xs font-medium w-12 text-right", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
-                                    {isOverBudget ? 'Over' : `${Math.round(100 - progress)}%`}
-                                </span>
-                            </div>
-                        </Card>
-                    )
-                })}
+            <BudgetGoals budgets={budgets} />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card>
+                    <SpendingBreakdownChart transactions={transactions || []} />
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Budget by Category</CardTitle>
+                        <CardDescription>A detailed look at your spending against your budgets.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-2 md:grid-cols-2">
+                        {budgets.map((budget) => {
+                            const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
+                            const isOverBudget = progress >= 100;
+
+                            return (
+                                <Card key={budget.category} className="p-3">
+                                    <div className="flex items-center justify-between gap-2 text-xs mb-2">
+                                        <div className="flex items-center gap-2 font-medium">
+                                            <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
+                                            <span className="truncate">{budget.category}</span>
+                                        </div>
+                                        <div className="text-muted-foreground shrink-0">
+                                            {formatCurrency(budget.spent)} / {formatCurrency(budget.limit)}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Progress value={progress} className={cn("h-2 flex-1", { '[&>div]:bg-destructive': isOverBudget })} />
+                                        <span className={cn("text-xs font-medium w-12 text-right", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
+                                            {isOverBudget ? 'Over' : `${Math.round(100 - progress)}%`}
+                                        </span>
+                                    </div>
+                                </Card>
+                            )
+                        })}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
