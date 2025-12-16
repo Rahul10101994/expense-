@@ -80,7 +80,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <OverviewCards transactions={financialData.transactions} />
       </div>
-       <Link href="/budgets" className="mt-4">
+       <Link href="/budgets" className="mt-4 block">
           <BudgetGoals budgets={financialData.budgets} />
       </Link>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
