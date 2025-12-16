@@ -12,6 +12,7 @@ import type { Transaction, Budget } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
+import AddBudgetForm from '@/components/budgets/add-budget-form';
 
 
 export default function BudgetsPage() {
@@ -82,8 +83,9 @@ export default function BudgetsPage() {
                 <SpendingBreakdownChart transactions={transactions || []} />
             </Card>
             <Card>
-                <CardHeader className="p-2 pt-2">
+                <CardHeader className="flex flex-row items-center justify-between p-2 pt-2">
                     <CardTitle className="text-sm font-medium">Budget by Category</CardTitle>
+                    <AddBudgetForm />
                 </CardHeader>
             </Card>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
