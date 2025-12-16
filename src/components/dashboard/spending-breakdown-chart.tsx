@@ -40,16 +40,21 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
     const chartConfig = Object.fromEntries(spendingByCategory.map((item, index) => [
         item.category, {label: item.category, color: `hsl(var(--chart-${index + 1}))`}
     ]));
+    
+    const totalSpent = React.useMemo(() => {
+        return spendingByCategory.reduce((acc, curr) => acc + curr.amount, 0);
+    }, [spendingByCategory]);
+
 
   return (
     <>
       <CardHeader className="items-center py-2">
         <CardTitle className="text-sm font-medium">Spending Breakdown</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 py-2">
+      <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[150px]"
+          className="mx-auto aspect-square max-h-[250px]"
         >
           <PieChart>
             <ChartTooltip
