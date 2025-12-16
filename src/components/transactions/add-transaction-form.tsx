@@ -166,6 +166,41 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                 <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem className="space-y-2">
+                          <FormLabel>Type</FormLabel>
+                          <FormControl>
+                            <div className="grid grid-cols-3 gap-2">
+                                <Button
+                                    type="button"
+                                    variant={field.value === TransactionType.Income ? 'default' : 'outline'}
+                                    onClick={() => field.onChange(TransactionType.Income)}
+                                >
+                                    Income
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={field.value === TransactionType.Expense ? 'default' : 'outline'}
+                                    onClick={() => field.onChange(TransactionType.Expense)}
+                                >
+                                    Expense
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={field.value === TransactionType.Investment ? 'default' : 'outline'}
+                                    onClick={() => field.onChange(TransactionType.Investment)}
+                                >
+                                    Investment
+                                </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
                     control={form.control}
                     name="description"
                     render={({ field }) => (
@@ -287,48 +322,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                         </FormItem>
                     )}
                     />
-                    <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Type</FormLabel>
-                        <Select
-                            onValueChange={(value) => {
-                                field.onChange(value);
-                                const isExpense = value === TransactionType.Expense || value === TransactionType.Investment;
-                                const incomeCategories = ['Income'];
-                                const expenseCategories = categories.filter(c => c !== 'Income');
-                                
-                                if(isExpense && incomeCategories.includes(form.getValues('category'))) {
-                                    form.setValue('category', '');
-                                } else if (!isExpense && expenseCategories.includes(form.getValues('category'))) {
-                                    form.setValue('category', '');
-                                }
-                            }}
-                            defaultValue={field.value}
-                        >
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a transaction type" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            <SelectItem value={TransactionType.Expense}>
-                                Expense
-                            </SelectItem>
-                            <SelectItem value={TransactionType.Income}>
-                                Income
-                            </SelectItem>
-                            <SelectItem value={TransactionType.Investment}>
-                                Investment
-                            </SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                    
                     <DialogFooter className="p-6 pt-0">
                         <Button type="submit">Add Transaction</Button>
                     </DialogFooter>
