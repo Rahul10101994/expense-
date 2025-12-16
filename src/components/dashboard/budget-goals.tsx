@@ -29,25 +29,17 @@ export default function BudgetGoals({ budgets }: { budgets: Budget[] }) {
 
   return (
     <Card>
-      <CardHeader className="pt-6">
-        <CardTitle className="text-lg">Budget Overview</CardTitle>
-        <CardDescription className="text-xs">Your spending progress for this month.</CardDescription>
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-base">Budget Overview</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <Progress value={progress} />
-        <div className="flex justify-between items-center text-sm">
-            <div className="flex flex-col items-start">
-                <span className="text-muted-foreground">Spent</span>
-                <span className="font-medium text-lg">{formatCurrency(totalSpent)}</span>
-            </div>
-             <div className="flex flex-col items-center">
-                <span className="text-muted-foreground">Remaining</span>
-                <span className="font-medium text-lg text-primary">{formatCurrency(totalLeft)}</span>
-            </div>
-            <div className="flex flex-col items-end">
-                <span className="text-muted-foreground">Budget</span>
-                <span className="font-medium text-lg">{formatCurrency(totalBudget)}</span>
-            </div>
+      <CardContent className="px-4 pb-3 space-y-2">
+         <div className="flex justify-between items-center text-xs text-muted-foreground">
+            <span>{formatCurrency(totalSpent)}</span>
+            <span>{formatCurrency(totalBudget)}</span>
+        </div>
+        <Progress value={progress} className="h-2"/>
+        <div className="text-xs text-center text-muted-foreground pt-1">
+            {formatCurrency(totalLeft)} remaining
         </div>
       </CardContent>
     </Card>
