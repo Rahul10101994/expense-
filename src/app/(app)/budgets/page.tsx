@@ -20,7 +20,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 export default function BudgetsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
-    const currentMonth = new Date();
+    const currentMonth = useMemo(() => new Date(), []);
 
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;
