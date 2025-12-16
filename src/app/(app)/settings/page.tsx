@@ -27,15 +27,16 @@ import {
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, addDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, doc, deleteDoc, addDoc, getDocs, writeBatch, query, where } from 'firebase/firestore';
 import type { Transaction, Category, Account, Budget, Goal } from '@/lib/types';
 import { useMemo, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { isSameMonth, isSameYear, getYear, getMonth, format } from 'date-fns';
+import { isSameMonth, isSameYear, getYear, getMonth, format, startOfMonth, endOfMonth } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
+type ClearScope = 'all' | 'period';
 
 export default function SettingsPage() {
     const firestore = useFirestore();
@@ -47,6 +48,7 @@ export default function SettingsPage() {
     const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
     const [newCategory, setNewCategory] = useState('');
     const [isClearing, setIsClearing] = useState(false);
+    const [clearScope, setClearScope] = useState<ClearScope>('all');
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -149,24 +151,54 @@ export default function SettingsPage() {
         try {
             const batch = writeBatch(firestore);
 
-            const collectionsToDelete = ['accounts', 'budgets', 'categories', 'goals'];
-            for (const col of collectionsToDelete) {
-                const querySnapshot = await getDocs(collection(firestore, `users/${user.uid}/${col}`));
-                querySnapshot.forEach(doc => batch.delete(doc.ref));
-            }
-            
-            // Special handling for transactions subcollection
-            const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
-            for (const accountDoc of accountsSnapshot.docs) {
-                const transactionsSnapshot = await getDocs(collection(accountDoc.ref, 'transactions'));
-                transactionsSnapshot.forEach(transactionDoc => batch.delete(transactionDoc.ref));
+            if (clearScope === 'all') {
+                const collectionsToDelete = ['accounts', 'budgets', 'categories', 'goals'];
+                for (const col of collectionsToDelete) {
+                    const querySnapshot = await getDocs(collection(firestore, `users/${user.uid}/${col}`));
+                    querySnapshot.forEach(doc => batch.delete(doc.ref));
+                }
+                
+                const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
+                for (const accountDoc of accountsSnapshot.docs) {
+                    const transactionsSnapshot = await getDocs(collection(accountDoc.ref, 'transactions'));
+                    transactionsSnapshot.forEach(transactionDoc => batch.delete(transactionDoc.ref));
+                }
+            } else {
+                 let startDate: Date;
+                 let endDate: Date;
+                 const now = new Date();
+
+                 if (period === 'currentMonth') {
+                     startDate = startOfMonth(now);
+                     endDate = endOfMonth(now);
+                 } else if (period === 'currentYear') {
+                     startDate = new Date(getYear(now), 0, 1);
+                     endDate = new Date(getYear(now), 11, 31, 23, 59, 59);
+                 } else if (period === 'custom') {
+                     startDate = startOfMonth(new Date(selectedYear, selectedMonth));
+                     endDate = endOfMonth(new Date(selectedYear, selectedMonth));
+                 } else { // overall
+                     startDate = new Date(0); // very old date
+                     endDate = new Date();
+                 }
+
+                const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
+                for (const accountDoc of accountsSnapshot.docs) {
+                    const transactionsQuery = query(
+                        collection(accountDoc.ref, 'transactions'),
+                        where('date', '>=', startDate.toISOString()),
+                        where('date', '<=', endDate.toISOString())
+                    );
+                    const transactionsSnapshot = await getDocs(transactionsQuery);
+                    transactionsSnapshot.forEach(transactionDoc => batch.delete(transactionDoc.ref));
+                }
             }
 
             await batch.commit();
-            toast({ title: "Records Cleared", description: "All your data has been successfully cleared." });
+            toast({ title: "Records Cleared", description: "Selected data has been successfully cleared." });
         } catch (error) {
             console.error("Error clearing records:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not clear all records." });
+            toast({ variant: 'destructive', title: "Error", description: "Could not clear records." });
         } finally {
             setIsClearing(false);
         }
@@ -175,6 +207,13 @@ export default function SettingsPage() {
 
     const yearOptions = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i);
     const monthOptions = Array.from({ length: 12 }, (_, i) => ({ value: i, label: format(new Date(2000, i), 'MMMM') }));
+    
+    const getClearDescription = () => {
+        if (clearScope === 'all') {
+            return "This action cannot be undone. This will permanently delete all your accounts, transactions, budgets, goals, and categories from our servers.";
+        }
+        return `This action cannot be undone. This will permanently delete all transactions for ${getReportTitle()}. Other data will not be affected.`;
+    }
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
@@ -291,28 +330,74 @@ export default function SettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Clear Data</CardTitle>
-                    <CardDescription>Permanently delete all your financial records. This action cannot be undone.</CardDescription>
+                    <CardDescription>Permanently delete financial records. This action cannot be undone.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                     <div className="flex flex-wrap gap-2 items-center">
+                         <Select value={clearScope} onValueChange={(v) => setClearScope(v as ClearScope)}>
+                            <SelectTrigger className="h-9 text-xs w-full sm:w-auto">
+                                <SelectValue placeholder="Select scope" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Records</SelectItem>
+                                <SelectItem value="period">By Period</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {clearScope === 'period' && (
+                            <>
+                                <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+                                    <SelectTrigger className="h-9 text-xs w-full sm:w-auto">
+                                        <SelectValue placeholder="Select period" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="currentMonth">This Month</SelectItem>
+                                        <SelectItem value="currentYear">This Year</SelectItem>
+                                        <SelectItem value="overall">Overall (All Transactions)</SelectItem>
+                                        <SelectItem value="custom">Custom</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {period === 'custom' && (
+                                    <>
+                                        <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+                                            <SelectTrigger className="h-9 text-xs w-full sm:w-auto">
+                                                <SelectValue placeholder="Select year" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {yearOptions.map(year => <SelectItem key={year} value={year.toString()}>{year}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
+                                            <SelectTrigger className="h-9 text-xs w-full sm:w-auto">
+                                                <SelectValue placeholder="Select month" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {monthOptions.map(month => <SelectItem key={month.value} value={month.value.toString()}>{month.label}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </div>
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive">
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Clear All Records
+                                Clear Records
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
                             <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle/>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete all your accounts, transactions, budgets, and goals data from our servers.
+                                {getClearDescription()}
                             </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={handleClearRecords} disabled={isClearing}>
                                 {isClearing ? <Spinner className="mr-2" /> : null}
-                                Yes, delete everything
+                                Yes, delete
                             </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
