@@ -304,7 +304,7 @@ export default function BudgetPlannerPage() {
                     />
                 </div>
                 
-                 <div className="p-4 bg-secondary rounded-lg text-center">
+                 <div className="p-2 bg-secondary rounded-lg text-center">
                     <p className="text-sm text-secondary-foreground">Total Budget for {format(new Date(form.getValues('month')), 'MMMM yyyy')}</p>
                     <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalBudget)}</p>
                     <p className="text-sm font-medium text-muted-foreground">Remaining: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(remainingBudget)}</p>
