@@ -25,9 +25,13 @@ export type Account = {
 }
 
 export type Budget = {
+  id: string;
   category: TransactionCategory;
   limit: number;
   spent: number;
+  month: string;
+  amount?: number;
+  categoryId?: string;
 };
 
 export type Goal = {

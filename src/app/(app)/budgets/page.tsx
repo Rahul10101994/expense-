@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
 import BudgetGoals from '@/components/dashboard/budget-goals';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { Transaction, Budget } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
@@ -15,52 +15,57 @@ import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-ch
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
-
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 export default function BudgetsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const currentMonth = new Date();
+
+    const budgetsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        const monthStart = startOfMonth(currentMonth);
+        return query(
+            collection(firestore, `users/${user.uid}/budgets`),
+            where('month', '>=', monthStart.toISOString())
+        );
+    }, [firestore, user, currentMonth]);
+    
+    const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        // In a multi-account setup, we would query all account subcollections.
-        // For simplicity, we are assuming a single account structure for now.
-        return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
-    }, [firestore, user]);
+        const monthStart = startOfMonth(currentMonth).toISOString();
+        const monthEnd = endOfMonth(currentMonth).toISOString();
+        return query(
+            collection(firestore, `users/${user.uid}/accounts/default/transactions`),
+            where('date', '>=', monthStart),
+            where('date', '<=', monthEnd)
+        );
+    }, [firestore, user, currentMonth]);
 
-    const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);
+    const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
     const budgets: Budget[] = useMemo(() => {
-        if (!transactions) return [];
+        if (!savedBudgets) return [];
 
-        const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = (transactions || []).filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
         }, {} as Record<string, number>);
-
-        // Placeholder for budget limits - in a real app, this would come from Firestore
-        const budgetLimits: Record<string, number> = {
-            'Food': 500,
-            'Shopping': 300,
-            'Transportation': 150,
-            'Entertainment': 100,
-            'Health': 100,
-            'Other': 100,
-            'Housing': 1500,
-            'Utilities': 100,
-            'Income': 0,
-            'Investment': 0,
-        };
-
-        return Object.keys(budgetLimits)
-            .filter(category => budgetLimits[category] > 0) // Only show expense categories with budgets
-            .map(category => ({
-                category: category as Transaction['category'],
-                limit: budgetLimits[category],
-                spent: spendingByCategory[category] || 0,
+        
+        return savedBudgets
+            .filter(budget => budget.amount > 0)
+            .map(budget => ({
+                id: budget.id,
+                category: budget.categoryId as Transaction['category'],
+                limit: budget.amount,
+                spent: spendingByCategory[budget.categoryId] || 0,
+                month: budget.month
         }));
-    }, [transactions]);
+
+    }, [savedBudgets, transactions]);
 
 
     const formatCurrency = (amount: number) => {
@@ -70,7 +75,7 @@ export default function BudgetsPage() {
         }).format(amount);
     };
 
-    if (isLoading) {
+    if (budgetsLoading || transactionsLoading) {
         return (
             <div className="flex h-64 w-full items-center justify-center">
                 <Spinner size="large" />
@@ -104,15 +109,21 @@ export default function BudgetsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Budget by Category</CardTitle>
-                        <CardDescription>A detailed look at your spending against your budgets.</CardDescription>
+                        <CardDescription>A detailed look at your spending against your budgets for {format(currentMonth, 'MMMM yyyy')}.</CardDescription>
                     </CardHeader>
                     <CardContent className="grid gap-2 md:grid-cols-2">
+                        {budgets.length === 0 && (
+                            <div className="text-center text-muted-foreground col-span-full py-8">
+                                <p>You haven't set any budgets for this month.</p>
+                                <Link href="/budget-planner" className="text-primary hover:underline">Set a budget now</Link>
+                            </div>
+                        )}
                         {budgets.map((budget) => {
                             const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
                             const isOverBudget = progress >= 100;
 
                             return (
-                                <Card key={budget.category} className="p-3">
+                                <Card key={budget.id} className="p-3">
                                     <div className="flex items-center justify-between gap-2 text-xs mb-2">
                                         <div className="flex items-center gap-2 font-medium">
                                             <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
