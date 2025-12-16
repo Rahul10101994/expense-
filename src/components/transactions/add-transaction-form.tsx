@@ -155,7 +155,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] grid-rows-[auto_minmax(0,1fr)_auto] p-0 max-h-[90vh]">
-        <DialogHeader className="p-6 pb-0">
+        <DialogHeader className="p-4 pb-0">
           <DialogTitle>Add New Transaction</DialogTitle>
           <DialogDescription>
             Enter the details of your new transaction.
