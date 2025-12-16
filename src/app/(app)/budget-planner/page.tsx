@@ -32,7 +32,6 @@ import {
 import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { categories } from '@/lib/data';
 import { format, getYear } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -40,9 +39,6 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 const formSchema = z.object({
-  category: z.string({
-    required_error: 'Please select a category.',
-  }),
   amount: z.coerce.number().positive({
     message: 'Budget amount must be a positive number.',
   }),
@@ -77,7 +73,7 @@ export default function BudgetPlannerPage() {
 
     const newBudget = {
       userId: user.uid,
-      categoryId: values.category,
+      categoryId: 'Total', // Using a special category for the total budget
       amount: values.amount,
       month: values.month + '-01T00:00:00Z', // Format for Firestore timestamp
     };
@@ -86,7 +82,7 @@ export default function BudgetPlannerPage() {
       addDocumentNonBlocking(budgetsCollection, newBudget);
       toast({
         title: 'Budget Added',
-        description: `Your budget for ${values.category} has been set.`,
+        description: `Your total budget for the month has been set.`,
       });
       router.push('/budgets');
     } catch (error) {
@@ -121,7 +117,7 @@ export default function BudgetPlannerPage() {
             <div>
                 <CardTitle>Budget Planner</CardTitle>
                 <CardDescription>
-                Set a spending limit for a category for a specific month.
+                Set a spending limit for a specific month.
                 </CardDescription>
             </div>
           </div>
@@ -158,43 +154,14 @@ export default function BudgetPlannerPage() {
               />
               <FormField
                 control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories
-                          .filter(c => c !== 'Income' && c !== 'Investment')
-                          .map(category => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Budget Amount</FormLabel>
+                    <FormLabel>Total Budget for the Month</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="e.g., 500.00"
+                        placeholder="e.g., 2000.00"
                         {...field}
                       />
                     </FormControl>
