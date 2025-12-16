@@ -230,7 +230,7 @@ export default function BudgetPlannerPage() {
               </Button>
             </Link>
             <div>
-                <CardTitle className="text-xl">Budget Planner</CardTitle>
+                <CardTitle className="text-lg">Budget Planner</CardTitle>
                 <CardDescription>
                   Allocate your budget across different categories for the month.
                 </CardDescription>
