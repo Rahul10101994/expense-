@@ -29,9 +29,9 @@ export default function BudgetGoals({ budgets }: { budgets: Budget[] }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Budget Overview</CardTitle>
-        <CardDescription>Your spending progress for this month.</CardDescription>
+      <CardHeader className="pt-6">
+        <CardTitle className="text-lg">Budget Overview</CardTitle>
+        <CardDescription className="text-xs">Your spending progress for this month.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Progress value={progress} />
