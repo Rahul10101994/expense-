@@ -83,7 +83,7 @@ export default function OverviewCards({ transactions }: { transactions: Transact
                 </Select>
             </div>
         </CardHeader>
-        <Link href={`/reports?period=${period}`}>
+        <Link href={`/settings/reports?period=${period}`}>
             <CardContent>
                 <div className="grid grid-cols-2 gap-4 text-xs">
                     <div>
