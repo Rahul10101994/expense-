@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,13 +11,14 @@ import type { Transaction, Budget, TransactionCategory } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { isSameMonth, isSameYear, startOfMonth, endOfMonth, getYear, getMonth, format } from 'date-fns';
-import { ArrowDown, ArrowUp, PiggyBank, Download } from 'lucide-react';
+import { ArrowDown, ArrowUp, PiggyBank, Download, ArrowLeft } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
 import BudgetGoals from '@/components/dashboard/budget-goals';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 
@@ -59,7 +61,7 @@ export default function ReportsPage() {
             params.set('year', selectedYear.toString());
             params.set('month', value);
         }
-        router.push(`/reports?${params.toString()}`);
+        router.push(`/settings/reports?${params.toString()}`);
     };
 
     const transactionsQuery = useMemoFirebase(() => {
@@ -160,9 +162,16 @@ export default function ReportsPage() {
     return (
         <div className="space-y-4">
             <Card>
-                <CardHeader className="py-2.5">
-                    <CardTitle className="text-base">Financial Reports</CardTitle>
-                    <CardDescription>Detailed analysis of your financial activity for: <span className="font-semibold capitalize">{getReportTitle()}</span></CardDescription>
+                <CardHeader className="py-2.5 flex-row items-center gap-4">
+                    <Link href="/settings">
+                        <Button variant="ghost" size="icon">
+                            <ArrowLeft />
+                        </Button>
+                    </Link>
+                    <div>
+                        <CardTitle className="text-base">Financial Reports</CardTitle>
+                        <CardDescription>Detailed analysis for: <span className="font-semibold capitalize">{getReportTitle()}</span></CardDescription>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-2 pt-0 flex flex-wrap gap-2 items-center">
                      <Select value={period} onValueChange={(v) => handleFilterChange('period', v)}>
@@ -273,8 +282,4 @@ export default function ReportsPage() {
             </div>
         </div>
     );
-
-    
-
-    
-
+}

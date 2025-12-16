@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CategoryIcon } from '@/lib/icons';
-import { PlusCircle, Trash2, Download, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Trash2, Download, AlertTriangle, FileText } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { isSameMonth, isSameYear, getYear, getMonth, format, startOfMonth, endOfMonth } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
+import Link from 'next/link';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 type ClearScope = 'all' | 'period';
@@ -155,14 +156,15 @@ export default function SettingsPage() {
                 const collectionsToDelete = ['accounts', 'budgets', 'categories', 'goals'];
                 for (const col of collectionsToDelete) {
                     const querySnapshot = await getDocs(collection(firestore, `users/${user.uid}/${col}`));
-                    querySnapshot.forEach(doc => batch.delete(doc.ref));
+                    for (const doc of querySnapshot.docs) {
+                        // Special handling for accounts to delete subcollections
+                        if (col === 'accounts') {
+                            const transactionsSnapshot = await getDocs(collection(doc.ref, 'transactions'));
+                            transactionsSnapshot.forEach(transactionDoc => batch.delete(transactionDoc.ref));
+                        }
+                        batch.delete(doc.ref);
+                    }
                 }
-                
-                // Also clear the transactions subcollection for the 'default' account
-                const defaultTransactionsRef = collection(firestore, `users/${user.uid}/accounts/default/transactions`);
-                const transactionsSnapshot = await getDocs(defaultTransactionsRef);
-                transactionsSnapshot.forEach(transactionDoc => batch.delete(transactionDoc.ref));
-
             } else {
                  let startDate: Date;
                  let endDate: Date;
@@ -220,8 +222,23 @@ export default function SettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Settings</CardTitle>
-                    <CardDescription>Manage your application settings.</CardDescription>
+                    <CardDescription>Manage your application settings and reports.</CardDescription>
                 </CardHeader>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>View Reports</CardTitle>
+                    <CardDescription>View detailed financial reports.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/settings/reports">
+                        <Button variant="outline">
+                            <FileText className="mr-2 h-4 w-4" />
+                            View Reports
+                        </Button>
+                    </Link>
+                </CardContent>
             </Card>
             
             <Card>
@@ -406,5 +423,4 @@ export default function SettingsPage() {
             </Card>
         </div>
     );
-
-    
+}

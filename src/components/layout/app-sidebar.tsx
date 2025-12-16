@@ -39,7 +39,6 @@ const menuItems = [
   { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
   { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -81,7 +80,7 @@ export default function AppSidebar() {
             <SidebarMenuItem key={item.href}>
               <Link href={item.href} passHref legacyBehavior>
                 <SidebarMenuButton
-                  isActive={pathname === item.href}
+                  isActive={pathname.startsWith(item.href)}
                   tooltip={{ children: item.label, side: 'right' }}
                 >
                   <item.icon />

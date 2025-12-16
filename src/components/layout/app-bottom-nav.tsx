@@ -7,10 +7,10 @@ import {
   LayoutDashboard,
   ArrowRightLeft,
   PiggyBank,
-  BarChart3,
   Settings,
   Plus,
   Landmark,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AddTransactionForm from '@/components/transactions/add-transaction-form';
@@ -25,7 +25,7 @@ const navItems = [
   { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
   { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/goals', label: 'Goals', icon: Target },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -63,7 +63,7 @@ export default function AppBottomNav() {
         </div>
       <nav className="grid grid-cols-6 items-center justify-around h-16">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
