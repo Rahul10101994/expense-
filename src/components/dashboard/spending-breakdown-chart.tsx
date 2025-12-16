@@ -2,13 +2,13 @@
 "use client"
 
 import * as React from "react"
-import { Pie, PieChart, Cell, Tooltip } from "recharts"
+import { Pie, PieChart, Cell } from "recharts"
 
 import {
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card"
 import {
   ChartContainer,
@@ -53,7 +53,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
     <>
       <CardHeader>
         <CardTitle>Spending Breakdown</CardTitle>
-        <CardDescription>Spending by category</CardDescription>
+        <CardDescription>A visual representation of your spending by category.</CardDescription>
       </CardHeader>
       <CardContent className="grid md:grid-cols-2 gap-4">
         <div className="flex items-center justify-center">
@@ -63,15 +63,15 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                 >
                 <PieChart>
                     <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel />}
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
                     />
                     <Pie
-                    data={spendingByCategory}
-                    dataKey="amount"
-                    nameKey="category"
-                    innerRadius="60%"
-                    strokeWidth={5}
+                        data={spendingByCategory}
+                        dataKey="amount"
+                        nameKey="category"
+                        innerRadius="60%"
+                        strokeWidth={5}
                     >
                     {spendingByCategory.map((entry) => (
                         <Cell key={`cell-${entry.category}`} fill={entry.fill} />
