@@ -2,13 +2,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
 import BudgetGoals from '@/components/dashboard/budget-goals';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { Transaction, Budget, TransactionCategory } from '@/lib/types';
+import { collection, query } from 'firebase/firestore';
+import type { Transaction, Budget } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 
@@ -19,22 +19,19 @@ export default function BudgetsPage() {
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        // This will fetch all transactions across all accounts for the user
-        const accountsCollectionRef = collection(firestore, `users/${user.uid}/accounts`);
-        const transactionsQuery = query(collection(accountsCollectionRef, 'default/transactions')); //fallback for old structure
         // In a multi-account setup, we would query all account subcollections.
-        // For simplicity, we are still assuming 'default' or a structure that can be iterated.
-        // A more robust implementation would fetch all accounts first, then transactions for each.
+        // For simplicity, we are assuming a single account structure for now.
         return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
     }, [firestore, user]);
 
     const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);
-    
+
     const budgets: Budget[] = useMemo(() => {
         if (!transactions) return [];
 
         const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
-            acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+            const categoryKey = t.category || 'Other';
+            acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
         }, {} as Record<string, number>);
 
@@ -48,12 +45,16 @@ export default function BudgetsPage() {
             'Other': 100,
             'Housing': 1500,
             'Utilities': 100,
+            'Income': 0,
+            'Investment': 0,
         };
 
-        return Object.keys(budgetLimits).map(category => ({
-            category: category as TransactionCategory,
-            limit: budgetLimits[category],
-            spent: spendingByCategory[category] || 0,
+        return Object.keys(budgetLimits)
+            .filter(category => budgetLimits[category] > 0) // Only show expense categories with budgets
+            .map(category => ({
+                category: category as Transaction['category'],
+                limit: budgetLimits[category],
+                spent: spendingByCategory[category] || 0,
         }));
     }, [transactions]);
 
@@ -77,14 +78,14 @@ export default function BudgetsPage() {
         <div className="space-y-4">
             <BudgetGoals budgets={budgets} />
             <Card>
-                <CardHeader className="p-2 pt-2">
+                <CardHeader className="p-2 pt-0">
                     <CardTitle className="text-sm font-medium">Budget by Category</CardTitle>
                 </CardHeader>
             </Card>
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
                 {budgets.map((budget) => {
                     const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
-                    const isOverBudget = progress > 100;
+                    const isOverBudget = progress >= 100;
 
                     return (
                         <Card key={budget.category} className="p-3">
@@ -99,7 +100,7 @@ export default function BudgetsPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <Progress value={progress} className={cn("h-2 flex-1", { '[&>div]:bg-destructive': isOverBudget })} />
-                                <span className={cn("text-xs font-medium", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
+                                <span className={cn("text-xs font-medium w-12 text-right", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
                                     {isOverBudget ? 'Over' : `${Math.round(100-progress)}%`}
                                 </span>
                             </div>
