@@ -225,7 +225,7 @@ export default function BudgetPlannerPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4">
           <div className="flex items-center gap-4">
              <Link href="/budgets">
               <Button variant="ghost" size="icon">
