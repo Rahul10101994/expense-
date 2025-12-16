@@ -51,10 +51,10 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
 
   return (
     <Card>
-      <CardHeader className="items-center py-2">
+      <CardHeader className="items-center">
         <CardTitle className="text-sm font-medium">Spending Breakdown</CardTitle>
       </CardHeader>
-      <CardContent className="grid md:grid-cols-2 gap-4 py-2">
+      <CardContent>
         
       </CardContent>
     </Card>
