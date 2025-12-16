@@ -15,7 +15,7 @@ import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import type { Transaction, Account } from '@/lib/types';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -27,7 +27,7 @@ export default function TransactionsPage() {
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collectionGroup(firestore, 'transactions'), where('userId', '==', user.uid));
+        return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
     }, [firestore, user]);
     
     const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);

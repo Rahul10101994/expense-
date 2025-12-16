@@ -10,7 +10,7 @@ import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-ch
 
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import Link from 'next/link';
-import { collection, query, where, collectionGroup } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { Transaction, Budget, Goal } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { useMemo } from 'react';
@@ -22,7 +22,7 @@ export default function DashboardPage() {
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collectionGroup(firestore, 'transactions'), where('userId', '==', user.uid));
+        return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
     }, [firestore, user]);
     
     const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
