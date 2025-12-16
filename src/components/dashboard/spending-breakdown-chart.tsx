@@ -12,13 +12,10 @@ import {
 } from "@/components/ui/card"
 import {
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { Transaction } from "@/lib/types"
-import { cn } from "@/lib/utils"
 
 export default function SpendingBreakdownChart({ transactions }: { transactions: Transaction[] }) {
     const expenses = transactions.filter(t => t.type === 'expense');
@@ -33,31 +30,26 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
             }
         });
 
-        return Object.entries(categoryMap).map(([category, amount]) => ({
+        return Object.entries(categoryMap).map(([category, amount], index) => ({
             category,
             amount,
-            fill: `hsl(var(--chart-${Object.keys(categoryMap).indexOf(category) + 1}))`
+            fill: `hsl(var(--chart-${index + 1}))`
         })).sort((a,b) => b.amount - a.amount);
     }, [expenses]);
     
     const chartConfig = Object.fromEntries(spendingByCategory.map((item, index) => [
         item.category, {label: item.category, color: `hsl(var(--chart-${index + 1}))`}
     ]));
-    
-    const totalSpent = React.useMemo(() => {
-        return spendingByCategory.reduce((acc, curr) => acc + curr.amount, 0)
-    }, [spendingByCategory])
 
   return (
     <>
-      <CardHeader className="items-center pb-0">
-        <CardTitle>Spending Breakdown</CardTitle>
-        <CardDescription>Spending by category</CardDescription>
+      <CardHeader className="items-center py-2">
+        <CardTitle className="text-sm font-medium">Spending Breakdown</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 pb-4">
+      <CardContent className="flex-1 py-2">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
+          className="mx-auto aspect-square max-h-[150px]"
         >
           <PieChart>
             <ChartTooltip
@@ -69,13 +61,9 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
               dataKey="amount"
               nameKey="category"
               innerRadius="60%"
-              strokeWidth={5}
+              strokeWidth={2}
             >
             </Pie>
-            <ChartLegend
-              content={<ChartLegendContent nameKey="category" />}
-              className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
-            />
           </PieChart>
         </ChartContainer>
       </CardContent>
