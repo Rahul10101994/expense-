@@ -253,7 +253,7 @@ export default function BudgetPlannerPage() {
                             value={field.value}
                         >
                             <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="h-9">
                                 <SelectValue placeholder="Select a month" />
                             </SelectTrigger>
                             </FormControl>
