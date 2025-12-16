@@ -20,6 +20,9 @@ import type { Transaction } from '@/lib/types';
 import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function RecentTransactions({ transactions }: { transactions: Transaction[] }) {
     const recentTransactions = useMemo(() => {
@@ -35,9 +38,17 @@ export default function RecentTransactions({ transactions }: { transactions: Tra
 
     return (
         <>
-            <CardHeader>
-                <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>A list of your most recent transactions.</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Recent Transactions</CardTitle>
+                    <CardDescription>A list of your most recent transactions.</CardDescription>
+                </div>
+                <Link href="/transactions" passHref>
+                    <Button variant="ghost" size="sm">
+                        See All
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </Link>
             </CardHeader>
             <CardContent className="h-[350px]">
                 <ScrollArea className="h-full">
