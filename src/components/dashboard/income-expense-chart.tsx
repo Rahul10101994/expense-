@@ -63,9 +63,9 @@ export default function IncomeExpenseChart({ transactions }: { transactions: Tra
                     axisLine={false}
                     tickMargin={8}
                     fontSize={12}
-                    tickFormatter={(value) => `$${value}`}
+                    tickFormatter={(value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', notation: 'compact' }).format(value as number)}
                 />
-                 <ChartTooltip content={<ChartTooltipContent />} />
+                 <ChartTooltip content={<ChartTooltipContent formatter={(value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value as number)} />} />
                 <Bar dataKey="income" fill="var(--color-income)" radius={4} />
                 <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
                 <Bar dataKey="investments" fill="var(--color-investments)" radius={4} />
