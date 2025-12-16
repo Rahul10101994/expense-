@@ -27,21 +27,21 @@ export default function BudgetsPage() {
                     const remaining = budget.limit - budget.spent;
                     return (
                         <Card key={budget.category}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+                                <CardTitle className="text-xs font-medium flex items-center gap-2">
                                     <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
                                     {budget.category}
                                 </CardTitle>
-                                <span className="text-sm text-muted-foreground">
-                                    {formatCurrency(budget.limit)}
+                                <span className="text-xs text-muted-foreground">
+                                    Limit: {formatCurrency(budget.limit)}
                                 </span>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{formatCurrency(budget.spent)}</div>
+                            <CardContent className="p-3 pt-0">
+                                <div className="text-lg font-bold">{formatCurrency(budget.spent)}</div>
                                 <p className="text-xs text-muted-foreground">
                                     {formatCurrency(remaining)} remaining
                                 </p>
-                                <Progress value={progress} className="mt-2 h-2" />
+                                <Progress value={progress} className="mt-1 h-1" />
                             </CardContent>
                         </Card>
                     )
