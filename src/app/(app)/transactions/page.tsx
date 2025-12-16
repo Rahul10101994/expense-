@@ -99,7 +99,6 @@ export default function TransactionsPage() {
                             <SelectItem value="all">All Types</SelectItem>
                             <SelectItem value="income">Income</SelectItem>
                             <SelectItem value="expense">Expense</SelectItem>
-                            <SelectItem value="investment">Investment</SelectItem>
                             <SelectItem value="transfer">Transfer</SelectItem>
                         </SelectContent>
                     </Select>
