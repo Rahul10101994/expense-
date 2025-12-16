@@ -68,7 +68,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
             <div className="grid md:grid-cols-2 gap-4">
                 <ChartContainer
                     config={chartConfig}
-                    className="mx-auto aspect-square max-h-[250px]"
+                    className="mx-auto aspect-square max-h-[150px]"
                 >
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -80,9 +80,9 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                             data={spendingByCategory}
                             dataKey="value"
                             nameKey="name"
-                            innerRadius={50}
+                            innerRadius={40}
                             strokeWidth={5}
-                            outerRadius={80}
+                            outerRadius={60}
                         >
                             {spendingByCategory.map((entry) => (
                                 <Cell key={`cell-${entry.name}`} fill={entry.fill} />
@@ -101,8 +101,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.fill }} />
                                         <span className="text-muted-foreground">{entry.name}</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-medium text-right">{formatCurrency(entry.value)}</span>
+                                    <div className="flex items-center justify-end gap-2">
                                         <span className="text-muted-foreground w-10 text-right">{percentage}%</span>
                                     </div>
                                 </li>
@@ -112,7 +111,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                 </div>
             </div>
           ) : (
-             <div className="flex h-[250px] w-full items-center justify-center">
+             <div className="flex h-[150px] w-full items-center justify-center">
                 <p className="text-sm text-muted-foreground">No spending data available.</p>
             </div>
           )}
