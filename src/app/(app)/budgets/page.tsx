@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -6,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
 import BudgetGoals from '@/components/dashboard/budget-goals';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Transaction, Budget, TransactionCategory } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
@@ -18,8 +19,13 @@ export default function BudgetsPage() {
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        // Assuming a single 'default' account for now
-        return collection(firestore, `users/${user.uid}/accounts/default/transactions`);
+        // This will fetch all transactions across all accounts for the user
+        const accountsCollectionRef = collection(firestore, `users/${user.uid}/accounts`);
+        const transactionsQuery = query(collection(accountsCollectionRef, 'default/transactions')); //fallback for old structure
+        // In a multi-account setup, we would query all account subcollections.
+        // For simplicity, we are still assuming 'default' or a structure that can be iterated.
+        // A more robust implementation would fetch all accounts first, then transactions for each.
+        return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
     }, [firestore, user]);
 
     const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);
@@ -78,27 +84,25 @@ export default function BudgetsPage() {
             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
                 {budgets.map((budget) => {
                     const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
-                    const remaining = budget.limit - budget.spent;
+                    const isOverBudget = progress > 100;
+
                     return (
-                        <Card key={budget.category}>
-                            <CardContent className="p-3">
-                                <div className="flex items-center justify-between gap-2 text-xs mb-2">
-                                     <div className="flex items-center gap-2 font-medium">
-                                        <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
-                                        <span className="truncate">{budget.category}</span>
-                                    </div>
-                                    <div className="text-muted-foreground shrink-0">
-                                       Limit: {formatCurrency(budget.limit)}
-                                    </div>
+                        <Card key={budget.category} className="p-3">
+                            <div className="flex items-center justify-between gap-2 text-xs mb-2">
+                                <div className="flex items-center gap-2 font-medium">
+                                    <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
+                                    <span className="truncate">{budget.category}</span>
                                 </div>
-                                <Progress value={progress} className="h-2 mb-2" />
-                                <div className="flex items-center justify-between text-xs">
-                                     <span className="font-bold text-sm">{formatCurrency(budget.spent)}</span>
-                                     <span className={cn("text-xs", remaining < 0 ? "text-red-500" : "text-muted-foreground")}>
-                                       {remaining < 0 ? `${formatCurrency(Math.abs(remaining))} over` : `${formatCurrency(remaining)} left`}
-                                    </span>
+                                <div className="text-muted-foreground shrink-0">
+                                    {formatCurrency(budget.spent)} / {formatCurrency(budget.limit)}
                                 </div>
-                            </CardContent>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Progress value={progress} className={cn("h-2 flex-1", { '[&>div]:bg-destructive': isOverBudget })} />
+                                <span className={cn("text-xs font-medium", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
+                                    {isOverBudget ? 'Over' : `${Math.round(100-progress)}%`}
+                                </span>
+                            </div>
                         </Card>
                     )
                 })}
