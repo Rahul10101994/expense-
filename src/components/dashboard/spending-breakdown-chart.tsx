@@ -50,10 +50,10 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
 
   return (
     <>
-      <CardHeader>
-        <CardTitle>Spending Breakdown</CardTitle>
+      <CardHeader className="items-center py-2">
+        <CardTitle className="text-sm font-medium">Spending Breakdown</CardTitle>
       </CardHeader>
-      <CardContent className="grid md:grid-cols-2 gap-4">
+      <CardContent className="grid md:grid-cols-2 gap-4 py-2">
         <div className="flex items-center justify-center max-h-[100px]">
             <ChartContainer
                 config={chartConfig}
