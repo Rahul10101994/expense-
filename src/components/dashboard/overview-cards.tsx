@@ -14,6 +14,7 @@ import type { Transaction } from '@/lib/types';
 import { useUser } from '@/firebase';
 import { isSameMonth, isSameYear } from 'date-fns';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall';
 
@@ -63,7 +64,7 @@ export default function OverviewCards({ transactions }: { transactions: Transact
 
   return (
     <>
-      <Card className="col-span-full">
+      <Card className={cn("col-span-full", "bg-secondary")}>
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
             <div>
               <CardTitle className="text-sm font-medium">{getDisplayName()}</CardTitle>
@@ -100,4 +101,3 @@ export default function OverviewCards({ transactions }: { transactions: Transact
     </>
   );
 }
-
