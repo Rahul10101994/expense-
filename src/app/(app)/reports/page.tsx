@@ -148,31 +148,31 @@ export default function ReportsPage() {
             <BudgetGoals budgets={budgets} />
 
             <Card>
-                <CardHeader className="py-3">
+                <CardHeader className="py-2">
                     <CardTitle className="text-xs">Budget Breakdown</CardTitle>
                 </CardHeader>
             </Card>
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+             <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
                 {budgets.map((budget) => {
                     const progress = (budget.spent / budget.limit) * 100;
                     const remaining = budget.limit - budget.spent;
                     return (
                         <Card key={budget.category}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2">
                                 <CardTitle className="text-xs font-medium flex items-center gap-2">
-                                    <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
+                                    <CategoryIcon category={budget.category} className="h-3 w-3 text-muted-foreground" />
                                     {budget.category}
                                 </CardTitle>
                                 <span className="text-xs text-muted-foreground">
                                     {formatCurrency(budget.limit)}
                                 </span>
                             </CardHeader>
-                            <CardContent className="pb-3">
-                                <div className="text-lg font-bold">{formatCurrency(budget.spent)}</div>
+                            <CardContent className="p-2 pt-0">
+                                <div className="text-base font-bold">{formatCurrency(budget.spent)}</div>
                                 <p className="text-xs text-muted-foreground">
                                     {formatCurrency(remaining)} remaining
                                 </p>
-                                <Progress value={progress} className="mt-2 h-2" />
+                                <Progress value={progress} className="mt-1 h-1.5" />
                             </CardContent>
                         </Card>
                     )
