@@ -17,9 +17,9 @@ export default function BudgetsPage() {
         <div className="space-y-4">
             <BudgetGoals budgets={budgets} />
             <Card>
-                <CardHeader>
-                    <CardTitle>Budget by Category</CardTitle>
-                    <CardDescription>Your spending progress for each category this month.</CardDescription>
+                <CardHeader className="p-4">
+                    <CardTitle className="text-lg">Budget by Category</CardTitle>
+                    <CardDescription className="text-xs">Your spending progress for each category this month.</CardDescription>
                 </CardHeader>
             </Card>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
