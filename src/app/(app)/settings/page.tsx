@@ -20,11 +20,19 @@ import {
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import type { Transaction } from '@/lib/types';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { isSameMonth, isSameYear, getYear, getMonth, format } from 'date-fns';
+
+type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 
 export default function SettingsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
+    
+    const [period, setPeriod] = useState<Period>('currentMonth');
+    const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
+    const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -32,14 +40,39 @@ export default function SettingsPage() {
     }, [firestore, user]);
 
     const { data: transactions } = useCollection<Transaction>(transactionsQuery);
+    
+    const filteredTransactions = useMemo(() => {
+        if (!transactions) return [];
+        const now = new Date();
+        if (period === 'currentMonth') {
+            return transactions.filter(t => isSameMonth(new Date(t.date), now));
+        }
+        if (period === 'currentYear') {
+            return transactions.filter(t => isSameYear(new Date(t.date), now));
+        }
+        if (period === 'custom') {
+            return transactions.filter(t => {
+                const date = new Date(t.date);
+                return getYear(date) === selectedYear && getMonth(date) === selectedMonth;
+            });
+        }
+        return transactions;
+    }, [transactions, period, selectedYear, selectedMonth]);
+
+    const getReportTitle = () => {
+        if (period === 'currentMonth') return 'This Month';
+        if (period === 'currentYear') return 'This Year';
+        if (period === 'custom') return format(new Date(selectedYear, selectedMonth), 'MMMM yyyy');
+        return 'Overall';
+    }
 
     const handleDownload = () => {
-        if (!transactions) return;
+        if (!filteredTransactions) return;
 
         const headers = ["Date", "Description", "Category", "Type", "Amount"];
         const csvRows = [headers.join(",")];
 
-        for (const transaction of transactions) {
+        for (const transaction of filteredTransactions) {
             const values = [
                 new Date(transaction.date).toLocaleDateString(),
                 `"${transaction.description.replace(/"/g, '""')}"`,
@@ -55,11 +88,14 @@ export default function SettingsPage() {
         const a = document.createElement('a');
         a.setAttribute('hidden', '');
         a.setAttribute('href', url);
-        a.setAttribute('download', `transactions-report.csv`);
+        a.setAttribute('download', `transactions-report-${getReportTitle().toLowerCase().replace(/\s/g, '-')}.csv`);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
     };
+
+    const yearOptions = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i);
+    const monthOptions = Array.from({ length: 12 }, (_, i) => ({ value: i, label: format(new Date(2000, i), 'MMMM') }));
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
@@ -73,11 +109,45 @@ export default function SettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Data Export</CardTitle>
+                    <CardDescription>Download your transaction data as a CSV file.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-2 items-center">
+                         <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+                            <SelectTrigger className="h-9 text-xs w-full sm:w-auto">
+                                <SelectValue placeholder="Select period" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="currentMonth">This Month</SelectItem>
+                                <SelectItem value="currentYear">This Year</SelectItem>
+                                <SelectItem value="overall">Overall</SelectItem>
+                                <SelectItem value="custom">Custom</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {period === 'custom' && (
+                            <>
+                                <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+                                    <SelectTrigger className="h-9 text-xs w-full sm:w-auto">
+                                        <SelectValue placeholder="Select year" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {yearOptions.map(year => <SelectItem key={year} value={year.toString()}>{year}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
+                                    <SelectTrigger className="h-9 text-xs w-full sm:w-auto">
+                                        <SelectValue placeholder="Select month" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {monthOptions.map(month => <SelectItem key={month.value} value={month.value.toString()}>{month.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </>
+                        )}
+                    </div>
                     <Button variant="outline" onClick={handleDownload}>
                         <Download className="mr-2 h-4 w-4" />
-                        Download All Transactions
+                        Download Report for {getReportTitle()}
                     </Button>
                 </CardContent>
             </Card>
