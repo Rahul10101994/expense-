@@ -8,7 +8,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card"
 import {
   ChartContainer,
@@ -53,13 +52,12 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
     <>
       <CardHeader>
         <CardTitle>Spending Breakdown</CardTitle>
-        <CardDescription>A visual representation of your spending by category.</CardDescription>
       </CardHeader>
       <CardContent className="grid md:grid-cols-2 gap-4">
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center max-h-[100px]">
             <ChartContainer
                 config={chartConfig}
-                className="aspect-square h-[100px]"
+                className="aspect-square h-full"
                 >
                 <PieChart>
                     <ChartTooltip
@@ -70,9 +68,8 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                         data={spendingByCategory}
                         dataKey="amount"
                         nameKey="category"
-                        innerRadius="50%"
+                        innerRadius="60%"
                         strokeWidth={5}
-                        outerRadius={40}
                     >
                     {spendingByCategory.map((entry) => (
                         <Cell key={`cell-${entry.category}`} fill={entry.fill} />
@@ -81,14 +78,14 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                 </PieChart>
             </ChartContainer>
         </div>
-        <div className="flex flex-col justify-center gap-2 text-sm">
+        <div className="flex flex-col justify-center gap-1 text-sm">
             {spendingByCategory.map((item) => (
                 <div key={item.category} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.fill }} />
-                        <span className="truncate text-muted-foreground">{item.category}</span>
+                        <span className="truncate text-muted-foreground text-xs">{item.category}</span>
                     </div>
-                    <span className="font-medium">{formatCurrency(item.amount)}</span>
+                    <span className="font-medium text-xs">{formatCurrency(item.amount)}</span>
                 </div>
             ))}
         </div>
