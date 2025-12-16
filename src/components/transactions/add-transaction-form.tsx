@@ -56,7 +56,7 @@ const baseSchema = z.object({
 });
 
 const incomeExpenseSchema = baseSchema.extend({
-  type: z.enum([TransactionType.Income, TransactionType.Expense]),
+  type: z.enum([TransactionType.Income, TransactionType.Expense, TransactionType.Investment]),
   accountId: z.string({
     required_error: 'Please select an account.',
   }),
@@ -232,7 +232,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] grid-rows-[auto_minmax(0,1fr)_auto] p-0 max-h-[90vh]">
+      <DialogContent className="sm:max-w-md grid-rows-[auto_minmax(0,1fr)_auto] p-0 max-h-[90vh]">
         <DialogHeader className="p-4 pb-0">
           <DialogTitle>Add New Transaction</DialogTitle>
           <DialogDescription>
@@ -423,7 +423,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                             </FormControl>
                             <SelectContent>
                               {categories
-                                .filter(c => transactionType === 'income' ? c === 'Income' : c !== 'Income')
+                                .filter(c => transactionType === TransactionType.Income ? c === 'Income' : c !== 'Income')
                                 .map((category) => (
                                 <SelectItem key={category} value={category}>{category}</SelectItem>
                               ))}
