@@ -65,10 +65,10 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
       </CardHeader>
       <CardContent>
           {spendingByCategory.length > 0 ? (
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 gap-4">
                 <ChartContainer
                     config={chartConfig}
-                    className="mx-auto aspect-square max-h-[150px] col-span-2"
+                    className="mx-auto aspect-square max-h-[150px]"
                 >
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -91,7 +91,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                         </PieChart>
                     </ResponsiveContainer>
                 </ChartContainer>
-                <div className="flex flex-col justify-center col-span-3">
+                <div className="flex flex-col justify-center">
                      <ul className="grid gap-1 text-xs">
                         {spendingByCategory.map((entry, index) => {
                             const percentage = totalExpenses > 0 ? (entry.value / totalExpenses * 100).toFixed(0) : 0;
