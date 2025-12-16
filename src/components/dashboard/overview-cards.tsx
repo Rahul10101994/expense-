@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -83,35 +84,42 @@ export default function OverviewCards({ transactions }: { transactions: Transact
 
   return (
     <>
-      <Card className="col-span-full">
+      <Card className="col-span-full md:col-span-2 lg:col-span-3">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">{getDisplayName()}</CardTitle>
-           <Select onValueChange={(value: Period) => setPeriod(value)} defaultValue={period}>
-              <SelectTrigger className="w-[120px] h-8 text-xs">
-                <SelectValue placeholder="Select period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="currentMonth">This Month</SelectItem>
-                <SelectItem value="currentYear">This Year</SelectItem>
-                <SelectItem value="overall">Overall</SelectItem>
-              </SelectContent>
-            </Select>
         </CardHeader>
         <Link href={`/reports?period=${period}`}>
-            <CardContent className="space-y-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg p-4">
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{formatCurrency(balance)}</div>
+            <CardContent className="space-y-2">
+              <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className='flex flex-col bg-gray-200 dark:bg-gray-700 p-2 rounded-md'>
+                    <div className='flex flex-col bg-gray-100 dark:bg-gray-800 p-2 rounded-md'>
                         <span className="text-gray-600 dark:text-gray-300">Income</span>
                         <span className="text-green-600 dark:text-green-400 font-medium">{formatCurrency(income)}</span>
                     </div>
-                    <div className='flex flex-col items-start bg-gray-200 dark:bg-gray-700 p-2 rounded-md'>
+                    <div className='flex flex-col items-start bg-gray-100 dark:bg-gray-800 p-2 rounded-md'>
                          <span className="text-gray-600 dark:text-gray-300">Expenses</span>
                         <span className="text-red-600 dark:text-red-400 font-medium">{formatCurrency(Math.abs(expenses))}</span>
                     </div>
               </div>
             </CardContent>
         </Link>
+      </Card>
+      <Card className="col-span-full md:col-span-2 lg:col-span-1">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Period</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Select onValueChange={(value: Period) => setPeriod(value)} defaultValue={period}>
+            <SelectTrigger className="w-full h-8 text-xs">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="currentMonth">This Month</SelectItem>
+              <SelectItem value="currentYear">This Year</SelectItem>
+              <SelectItem value="overall">Overall</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
       </Card>
     </>
   );

@@ -31,7 +31,8 @@ export default function DashboardPage() {
         if (!transactions) return [];
 
         const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
-            acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+            const categoryKey = t.category || 'Other';
+            acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
         }, {} as Record<string, number>);
 
