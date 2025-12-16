@@ -103,7 +103,7 @@ export default function BudgetPlannerPage() {
   const { data: existingBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
   useEffect(() => {
-    if (budgetsLoading) return; // Wait until loading is finished
+    if (budgetsLoading) return;
 
     if (existingBudgets && existingBudgets.length > 0) {
       const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
@@ -117,18 +117,19 @@ export default function BudgetPlannerPage() {
       stepTwoForm.setValue('categoryBudgets', categoryBudgets);
       setStep(2);
     } else {
-       // Only reset if we are not loading and there are no budgets for the selected month.
+      // Only reset if we've finished loading and confirmed there are no budgets.
       setStep(1);
       setTotalBudget(0);
-      // We keep the selected month in stepOneForm
       stepOneForm.setValue('totalAmount', 0);
       stepOneForm.setValue('carryForward', false);
       stepTwoForm.reset({
         categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
       });
     }
+  // We disable the lint rule here because we explicitly want this effect to re-run
+  // only when the data or loading state changes, not on every change to the form objects.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingBudgets, budgetsLoading, selectedMonth]);
+  }, [existingBudgets, budgetsLoading]);
 
 
   const { fields } = useFieldArray({
