@@ -47,6 +47,13 @@ export default function DashboardPage() {
     }, [firestore, user, currentMonth]);
     
     const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
+
+     const goalsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, `users/${user.uid}/goals`);
+    }, [firestore, user]);
+
+    const { data: goals, isLoading: goalsLoading } = useCollection<Goal>(goalsQuery);
     
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets || !transactions) return [];
@@ -69,14 +76,8 @@ export default function DashboardPage() {
 
     }, [savedBudgets, transactions]);
     
-    // Using mock data for goals for now
-    const goals: Goal[] = [
-      { id: '1', name: 'Vacation to Hawaii', targetAmount: 5000, currentAmount: 1200, deadline: '2025-06-01' },
-      { id: '2', name: 'House Down Payment', targetAmount: 50000, currentAmount: 15000, deadline: '2027-01-01' },
-      { id: '3', name: 'New Laptop', targetAmount: 2000, currentAmount: 1800, deadline: '2024-12-01' },
-    ];
 
-    if (transactionsLoading || accountsLoading || budgetsLoading) {
+    if (transactionsLoading || accountsLoading || budgetsLoading || goalsLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Spinner size="large" />
@@ -88,7 +89,7 @@ export default function DashboardPage() {
         transactions: transactions || [],
         accounts: accounts || [],
         budgets,
-        goals,
+        goals: goals || [],
     };
 
   return (

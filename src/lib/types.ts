@@ -39,10 +39,11 @@ export type Budget = {
 
 export type Goal = {
   id: string;
+  userId: string;
   name: string;
   targetAmount: number;
   currentAmount: number;
-  deadline: string;
+  targetDate: string;
 };
 
 export type Category = {
