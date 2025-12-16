@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/select';
 import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, query, where, doc, writeBatch } from 'firebase/firestore';
-import { format, getYear, startOfMonth } from 'date-fns';
+import { format, getYear, startOfMonth, addMonths, isSameMonth } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft } from 'lucide-react';
@@ -94,22 +94,27 @@ export default function BudgetPlannerPage() {
   const { data: existingBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
   useEffect(() => {
+    // Exit if we are in a loading state to prevent premature form resets.
     if (budgetsLoading) return;
 
+    // Check if budgets for the selected month exist.
     if (existingBudgets && existingBudgets.length > 0) {
       const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
       const categoryBudgets = expenseCategories.map(cat => {
         const existing = existingBudgets.find(b => b.categoryId === cat);
         return { category: cat, amount: existing?.amount || 0 };
       });
+      
       form.reset({
         totalAmount: total,
         month: selectedMonth,
-        carryForward: false, // Or load this if saved
+        carryForward: false, // Don't carry over the carry-forward setting
         categoryBudgets: categoryBudgets,
       });
+
     } else {
-      // Only reset if we've finished loading and confirmed there are no budgets for the selected month.
+      // This block will run after loading is complete and no budgets were found for the selected month.
+      // It resets the form to a clean slate for the new month's budget entry.
       form.reset({
         totalAmount: 0,
         month: selectedMonth,
@@ -117,6 +122,7 @@ export default function BudgetPlannerPage() {
         categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
       });
     }
+  // The dependency array ensures this effect re-runs when the selected month or the loaded data changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingBudgets, budgetsLoading, selectedMonth]);
 
@@ -133,7 +139,7 @@ export default function BudgetPlannerPage() {
       
       for (const budget of values.categoryBudgets) {
         if (budget.amount >= 0) {
-          const existingBudgetDoc = existingBudgets?.find(b => b.categoryId === budget.category);
+          const existingBudgetDoc = existingBudgets?.find(b => b.categoryId === budget.category && isSameMonth(new Date(b.month), new Date(monthStart)));
           
           const budgetData = {
             userId: user.uid,
@@ -154,10 +160,35 @@ export default function BudgetPlannerPage() {
       
       await batch.commit();
       
-      toast({
-          title: 'Budgets Saved',
-          description: `Your budgets for ${format(new Date(month), 'MMMM yyyy')} have been set.`,
-      });
+      if (values.carryForward) {
+        const nextMonthDate = addMonths(new Date(month), 1);
+        const nextMonthStart = startOfMonth(nextMonthDate).toISOString();
+        const nextMonthBatch = writeBatch(firestore);
+
+        for (const budget of values.categoryBudgets) {
+           if (budget.amount >= 0) {
+             const nextMonthBudgetData = {
+                userId: user.uid,
+                categoryId: budget.category,
+                amount: budget.amount,
+                month: nextMonthStart,
+              };
+             const newDocRef = doc(collection(firestore, `users/${user.uid}/budgets`));
+             nextMonthBatch.set(newDocRef, nextMonthBudgetData);
+           }
+        }
+        await nextMonthBatch.commit();
+        toast({
+          title: 'Budgets Saved and Copied',
+          description: `Your budgets for ${format(new Date(month), 'MMMM yyyy')} have been set and also copied to ${format(nextMonthDate, 'MMMM yyyy')}.`,
+        });
+      } else {
+        toast({
+            title: 'Budgets Saved',
+            description: `Your budgets for ${format(new Date(month), 'MMMM yyyy')} have been set.`,
+        });
+      }
+      
       router.push('/budgets');
 
     } catch (error) {
