@@ -79,7 +79,7 @@ export default function BudgetsPage() {
     return (
         <div className="space-y-4">
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between p-3">
                     <div>
                         <CardTitle>Budgets</CardTitle>
                         <CardDescription>Create and manage your monthly budgets.</CardDescription>
