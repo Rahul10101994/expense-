@@ -101,7 +101,7 @@ export default function ReportsPage() {
         <div className="space-y-4">
             <Card>
                 <CardHeader className="py-2">
-                    <CardTitle className="text-base">Financial Reports</CardTitle>
+                    <CardTitle className="text-sm">Financial Reports</CardTitle>
                     <CardDescription>Detailed analysis of your financial activity for: <span className="font-semibold capitalize">{period === 'currentMonth' ? 'This Month' : period === 'currentYear' ? 'This Year' : 'Overall'}</span></CardDescription>
                 </CardHeader>
             </Card>
