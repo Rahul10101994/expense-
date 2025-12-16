@@ -108,29 +108,29 @@ export default function ReportsPage() {
 
             <div className="grid gap-4 md:grid-cols-3">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-1">
                         <CardTitle className="text-sm font-medium">Total Income</CardTitle>
                         <ArrowUp className="h-4 w-4 text-green-500" />
                     </CardHeader>
-                    <CardContent className="p-2">
+                    <CardContent className="p-1">
                         <div className="text-lg font-bold text-green-500">{formatCurrency(income)}</div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-1">
                         <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
                         <ArrowDown className="h-4 w-4 text-red-500" />
                     </CardHeader>
-                    <CardContent className="p-2">
+                    <CardContent className="p-1">
                         <div className="text-lg font-bold text-red-500">{formatCurrency(expenses)}</div>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-1">
                         <CardTitle className="text-sm font-medium">Net Savings</CardTitle>
                         <PiggyBank className="h-4 w-4 text-primary" />
                     </CardHeader>
-                    <CardContent className="p-2">
+                    <CardContent className="p-1">
                         <div className="text-lg font-bold text-primary">{formatCurrency(savings)}</div>
                     </CardContent>
                 </Card>
