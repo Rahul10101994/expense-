@@ -80,6 +80,9 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <OverviewCards transactions={financialData.transactions} />
       </div>
+       <Link href="/budgets">
+          <BudgetGoals budgets={financialData.budgets} />
+      </Link>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-12 lg:col-span-4">
           <IncomeExpenseChart transactions={financialData.transactions} />
@@ -88,9 +91,6 @@ export default function DashboardPage() {
           <SpendingBreakdownChart transactions={financialData.transactions} />
         </Card>
       </div>
-       <Link href="/budgets">
-          <BudgetGoals budgets={financialData.budgets} />
-      </Link>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-12 lg:col-span-4 h-[440px]">
           <RecentTransactions transactions={financialData.transactions} />
