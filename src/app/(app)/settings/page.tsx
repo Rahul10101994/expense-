@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CategoryIcon } from '@/lib/icons';
-import { PlusCircle, Trash2, Download, AlertTriangle, FileText } from 'lucide-react';
+import { PlusCircle, Trash2, Download, AlertTriangle, FileText, Landmark } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -224,6 +224,21 @@ export default function SettingsPage() {
                     <CardTitle>Settings</CardTitle>
                     <CardDescription>Manage your application settings and reports.</CardDescription>
                 </CardHeader>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Manage Accounts</CardTitle>
+                    <CardDescription>View and manage your connected financial accounts.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/accounts">
+                        <Button variant="outline">
+                            <Landmark className="mr-2 h-4 w-4" />
+                            Manage Accounts
+                        </Button>
+                    </Link>
+                </CardContent>
             </Card>
 
             <Card>

@@ -23,7 +23,6 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
-  { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/settings', label: 'Settings', icon: Settings },
@@ -61,7 +60,7 @@ export default function AppBottomNav() {
                  </AddTransactionForm>
              </div>
         </div>
-      <nav className="grid grid-cols-6 items-center justify-around h-16">
+      <nav className="grid grid-cols-5 items-center justify-around h-16">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
