@@ -170,7 +170,7 @@ export default function BudgetPlannerPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Set Budget'}
+                {isSubmitting ? 'Saving...' : 'Next'}
               </Button>
             </form>
           </Form>
