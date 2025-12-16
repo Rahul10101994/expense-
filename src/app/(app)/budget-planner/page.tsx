@@ -35,12 +35,13 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format, getYear, startOfMonth, endOfMonth } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import Link from 'next/link';
 import { categories } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
 import type { Budget } from '@/lib/types';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const stepOneSchema = z.object({
@@ -48,6 +49,7 @@ const stepOneSchema = z.object({
     message: 'Budget amount must be a positive number.',
   }),
   month: z.string().min(1, 'Please select a month'),
+  carryForward: z.boolean().default(false),
 });
 
 const categoryBudgetSchema = z.object({
@@ -77,6 +79,7 @@ export default function BudgetPlannerPage() {
     defaultValues: {
       totalAmount: 0,
       month: currentMonth,
+      carryForward: false,
     },
   });
 
@@ -92,11 +95,9 @@ export default function BudgetPlannerPage() {
   const budgetsQuery = useMemoFirebase(() => {
     if (!user || !selectedMonth) return null;
     const monthStart = startOfMonth(new Date(selectedMonth)).toISOString();
-    const monthEnd = endOfMonth(new Date(selectedMonth)).toISOString();
     return query(
       collection(firestore, `users/${user.uid}/budgets`),
-      where('month', '>=', monthStart),
-      where('month', '<=', monthEnd)
+      where('month', '==', monthStart),
     );
   }, [firestore, user, selectedMonth]);
 
@@ -121,8 +122,13 @@ export default function BudgetPlannerPage() {
       stepTwoForm.reset({
         categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
       });
+       stepOneForm.reset({
+        totalAmount: 0,
+        month: selectedMonth,
+        carryForward: false
+      });
     }
-  }, [existingBudgets, budgetsLoading, stepOneForm, stepTwoForm]);
+  }, [existingBudgets, budgetsLoading, stepOneForm, stepTwoForm, selectedMonth]);
 
 
   const { fields } = useFieldArray({
@@ -144,17 +150,14 @@ export default function BudgetPlannerPage() {
 
     try {
         for (const budget of values.categoryBudgets) {
-            if (budget.amount > 0) {
+            if (budget.amount >= 0) {
                 const existingBudgetDoc = existingBudgets?.find(b => b.categoryId === budget.category);
                 const newBudget = {
                     userId: user.uid,
                     categoryId: budget.category,
                     amount: budget.amount,
-                    month: new Date(month).toISOString(),
+                    month: startOfMonth(new Date(month)).toISOString(),
                 };
-                // Note: This logic assumes you want to create new documents.
-                // A more robust solution would update existing documents if they exist.
-                // For this implementation, we will just add new ones which might create duplicates if not handled properly.
                 // A better approach would be to query first, then update or create.
                 addDocumentNonBlocking(budgetsCollection, newBudget);
             }
@@ -218,6 +221,26 @@ export default function BudgetPlannerPage() {
           {step === 1 && (
             <Form {...stepOneForm}>
               <form onSubmit={stepOneForm.handleSubmit(onStepOneSubmit)} className="space-y-6">
+                <FormField
+                  control={stepOneForm.control}
+                  name="carryForward"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Carry forward to next month
+                        </FormLabel>
+                         <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={stepOneForm.control}
                   name="month"
@@ -298,6 +321,7 @@ export default function BudgetPlannerPage() {
                                       const value = e.target.value;
                                       formField.onChange(value === '' ? 0 : parseFloat(value));
                                   }}
+                                  value={formField.value || 0}
                                 />
                               </FormControl>
                             </div>
@@ -322,5 +346,3 @@ export default function BudgetPlannerPage() {
     </div>
   );
 }
-
-    
