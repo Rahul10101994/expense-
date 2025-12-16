@@ -18,23 +18,32 @@ import {
 import type { Transaction } from "@/lib/types"
 
 const RADIAN = Math.PI / 180;
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }: any) => {
+const renderCustomizedLabel = (props: any) => {
+  const { cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload } = props;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const sin = Math.sin(-RADIAN * midAngle);
+  const cos = Math.cos(-RADIAN * midAngle);
+  const sx = cx + (outerRadius + 10) * cos;
+  const sy = cy + (outerRadius + 10) * sin;
+  const mx = cx + (outerRadius + 30) * cos;
+  const my = cy + (outerRadius + 30) * sin;
+  const ex = mx + (cos >= 0 ? 1 : -1) * 22;
+  const ey = my;
+  const textAnchor = cos >= 0 ? 'start' : 'end';
 
-  const outerRadiusWithPadding = outerRadius + 10;
-  const x2 = cx + outerRadiusWithPadding * Math.cos(-midAngle * RADIAN);
-  const y2 = cy + outerRadiusWithPadding * Math.sin(-midAngle * RADIAN);
-  
-  const textAnchor = x2 > cx ? 'start' : 'end';
-
+  if (percent === 0) return null;
 
   return (
     <g>
-      <path d={`M${x},${y}L${x2},${y2}`} stroke="hsl(var(--foreground))" fill="none" strokeOpacity={0.5}/>
-      <text x={x2 + (x2 > cx ? 1 : -1) * 12} y={y2} textAnchor={textAnchor} fill="hsl(var(--foreground))" dominantBaseline="central" className="text-xs">
-        {`${payload.category} (${(percent * 100).toFixed(0)}%)`}
+      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke="hsl(var(--foreground))" fill="none" strokeOpacity={0.7} />
+      <circle cx={sx} cy={sy} r={2} fill="hsl(var(--foreground))" stroke="none" />
+      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="hsl(var(--muted-foreground))" className="text-xs">
+          {`${payload.category}`}
+      </text>
+      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="hsl(var(--foreground))" className="text-xs font-semibold">
+          {`${(percent * 100).toFixed(0)}%`}
       </text>
     </g>
   );
