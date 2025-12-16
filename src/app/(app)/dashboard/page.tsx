@@ -84,10 +84,10 @@ export default function DashboardPage() {
           <BudgetGoals budgets={financialData.budgets} />
       </Link>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-12 lg:col-span-4">
+        <Card className="col-span-12 lg:col-span-5">
           <IncomeExpenseChart transactions={financialData.transactions} />
         </Card>
-        <Card className="col-span-12 lg:col-span-3">
+        <Card className="col-span-12 lg:col-span-2">
           <SpendingBreakdownChart transactions={financialData.transactions} />
         </Card>
       </div>
