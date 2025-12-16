@@ -279,6 +279,7 @@ export default function BudgetPlannerPage() {
                             <Input
                             type="number"
                             placeholder="e.g., 2000.00"
+                            className="h-9"
                             {...field}
                             />
                         </FormControl>
@@ -357,5 +358,3 @@ export default function BudgetPlannerPage() {
     </div>
   );
 }
-
-    
