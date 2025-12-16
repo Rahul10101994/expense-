@@ -15,11 +15,13 @@ import { collection, query, where } from 'firebase/firestore';
 import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { useMemo } from 'react';
+import { startOfMonth } from 'date-fns';
 
 
 export default function DashboardPage() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const currentMonth = useMemo(() => new Date(), []);
 
     const transactionsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -35,35 +37,37 @@ export default function DashboardPage() {
 
     const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
 
-    const budgets = useMemo(() => {
-        if (!transactions) return [];
+    const budgetsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        const monthStart = startOfMonth(currentMonth);
+        return query(
+            collection(firestore, `users/${user.uid}/budgets`),
+            where('month', '>=', monthStart.toISOString())
+        );
+    }, [firestore, user, currentMonth]);
+    
+    const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
+    
+    const budgets: Budget[] = useMemo(() => {
+        if (!savedBudgets || !transactions) return [];
 
         const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
         }, {} as Record<string, number>);
-
-        // Placeholder for budget limits - in a real app, this would come from Firestore
-        const budgetLimits: Record<string, number> = {
-            'Food': 500,
-            'Shopping': 300,
-            'Transportation': 150,
-            'Entertainment': 100,
-            'Health': 100,
-            'Other': 100,
-            'Housing': 1500,
-            'Utilities': 100,
-        };
-
-        return Object.keys(budgetLimits).map(category => ({
-            id: category,
-            category: category as Transaction['category'],
-            limit: budgetLimits[category],
-            spent: spendingByCategory[category] || 0,
-            month: new Date().toISOString()
+        
+        return savedBudgets
+            .filter(budget => budget.amount > 0)
+            .map(budget => ({
+                id: budget.id,
+                category: budget.categoryId as Transaction['category'],
+                limit: budget.amount,
+                spent: spendingByCategory[budget.categoryId] || 0,
+                month: budget.month
         }));
-    }, [transactions]);
+
+    }, [savedBudgets, transactions]);
     
     // Using mock data for goals for now
     const goals: Goal[] = [
@@ -72,7 +76,7 @@ export default function DashboardPage() {
       { id: '3', name: 'New Laptop', targetAmount: 2000, currentAmount: 1800, deadline: '2024-12-01' },
     ];
 
-    if (transactionsLoading || accountsLoading) {
+    if (transactionsLoading || accountsLoading || budgetsLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Spinner size="large" />
