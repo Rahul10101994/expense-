@@ -120,8 +120,11 @@ export default function BudgetPlannerPage() {
       // Only reset if we've finished loading and confirmed there are no budgets.
       setStep(1);
       setTotalBudget(0);
-      stepOneForm.setValue('totalAmount', 0);
-      stepOneForm.setValue('carryForward', false);
+      stepOneForm.reset({
+        totalAmount: 0,
+        month: selectedMonth,
+        carryForward: false
+      });
       stepTwoForm.reset({
         categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
       });
@@ -129,7 +132,7 @@ export default function BudgetPlannerPage() {
   // We disable the lint rule here because we explicitly want this effect to re-run
   // only when the data or loading state changes, not on every change to the form objects.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingBudgets, budgetsLoading]);
+  }, [existingBudgets, budgetsLoading, selectedMonth]);
 
 
   const { fields } = useFieldArray({
@@ -163,7 +166,7 @@ export default function BudgetPlannerPage() {
             month: monthStart,
           };
           
-          if (existingBudgetDoc) {
+          if (existingBudgetDoc && existingBudgetDoc.id) {
             // Update existing document
             const docRef = doc(firestore, `users/${user.uid}/budgets`, existingBudgetDoc.id);
             batch.set(docRef, budgetData, { merge: true });
