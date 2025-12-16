@@ -162,7 +162,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-full">
-            <div className="p-6">
+            <div className="p-6 pt-4">
                 <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
