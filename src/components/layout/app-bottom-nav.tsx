@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -25,6 +26,7 @@ const navItems = [
   { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/budgets', label: 'Budgets', icon: PiggyBank },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function AppBottomNav() {
@@ -59,7 +61,7 @@ export default function AppBottomNav() {
                  </AddTransactionForm>
              </div>
         </div>
-      <nav className="grid grid-cols-5 items-center justify-around h-16">
+      <nav className="grid grid-cols-6 items-center justify-around h-16">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
