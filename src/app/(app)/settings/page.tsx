@@ -158,11 +158,11 @@ export default function SettingsPage() {
                     querySnapshot.forEach(doc => batch.delete(doc.ref));
                 }
                 
-                const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
-                for (const accountDoc of accountsSnapshot.docs) {
-                    const transactionsSnapshot = await getDocs(collection(accountDoc.ref, 'transactions'));
-                    transactionsSnapshot.forEach(transactionDoc => batch.delete(transactionDoc.ref));
-                }
+                // Also clear the transactions subcollection for the 'default' account
+                const defaultTransactionsRef = collection(firestore, `users/${user.uid}/accounts/default/transactions`);
+                const transactionsSnapshot = await getDocs(defaultTransactionsRef);
+                transactionsSnapshot.forEach(transactionDoc => batch.delete(transactionDoc.ref));
+
             } else {
                  let startDate: Date;
                  let endDate: Date;
@@ -406,4 +406,5 @@ export default function SettingsPage() {
             </Card>
         </div>
     );
-}
+
+    
