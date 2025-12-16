@@ -2,7 +2,6 @@
 "use client"
 
 import * as React from "react"
-import { Pie, PieChart, Cell } from "recharts"
 
 import {
   Card,
@@ -12,8 +11,6 @@ import {
 } from "@/components/ui/card"
 import {
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { Transaction } from "@/lib/types"
 
@@ -51,7 +48,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
 
   return (
     <Card>
-      <CardHeader className="items-center">
+      <CardHeader className="items-center py-2">
         <CardTitle className="text-sm font-medium">Spending Breakdown</CardTitle>
       </CardHeader>
       <CardContent>
