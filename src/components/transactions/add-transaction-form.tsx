@@ -189,10 +189,10 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                                 </Button>
                                 <Button
                                     type="button"
-                                    variant={field.value === TransactionType.Investment ? 'default' : 'outline'}
-                                    onClick={() => field.onChange(TransactionType.Investment)}
+                                    variant={field.value === TransactionType.Transfer ? 'default' : 'outline'}
+                                    onClick={() => field.onChange(TransactionType.Transfer)}
                                 >
-                                    Investment
+                                    Transfer
                                 </Button>
                             </div>
                           </FormControl>
