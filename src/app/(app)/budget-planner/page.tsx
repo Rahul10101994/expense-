@@ -95,34 +95,29 @@ export default function BudgetPlannerPage() {
 
   useEffect(() => {
     if (budgetsLoading) {
-      return; // Wait until loading is complete
+      return;
     }
-
-    if (existingBudgets && existingBudgets.length > 0) {
-      // If budgets exist for the selected month, populate the form
-      const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
-      const categoryBudgets = expenseCategories.map(cat => {
-        const existing = existingBudgets.find(b => b.categoryId === cat);
-        return { category: cat, amount: existing?.amount || 0 };
-      });
-
-      form.reset({
-        totalAmount: total,
-        month: selectedMonth, // Keep the selected month
-        carryForward: false, // Default carryForward to false
-        categoryBudgets: categoryBudgets,
-      });
-    } else {
-      // If no budgets exist, reset to default for the new month, but keep the month selected
-      form.reset({
-        totalAmount: 0,
-        month: selectedMonth,
-        carryForward: false,
-        categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
-      });
+  
+    if (existingBudgets) {
+      if (existingBudgets.length > 0) {
+        const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
+        const categoryBudgets = expenseCategories.map(cat => {
+          const existing = existingBudgets.find(b => b.categoryId === cat);
+          return { category: cat, amount: existing?.amount || 0 };
+        });
+  
+        form.reset({
+          totalAmount: total,
+          month: selectedMonth,
+          carryForward: false, // Default carryForward to false, user can re-enable if needed
+          categoryBudgets: categoryBudgets,
+        });
+      } else {
+        // Only reset amounts, keep month and total amount if user was editing
+        form.setValue('categoryBudgets', expenseCategories.map(cat => ({ category: cat, amount: 0 })));
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingBudgets, budgetsLoading, selectedMonth]); // Depend on data, loading state, and the selected month
+  }, [existingBudgets, budgetsLoading, selectedMonth, form]);
 
 
   async function onSubmit(values: z.infer<typeof budgetFormSchema>) {
@@ -291,7 +286,7 @@ export default function BudgetPlannerPage() {
                         control={form.control}
                         name="carryForward"
                         render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 md:col-span-2">
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-2 md:col-span-2">
                             <FormControl>
                                 <Checkbox
                                 checked={field.value}
@@ -358,5 +353,3 @@ export default function BudgetPlannerPage() {
     </div>
   );
 }
-
-    
