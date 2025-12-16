@@ -65,33 +65,35 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
       </CardHeader>
       <CardContent>
           {spendingByCategory.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4">
-                <ChartContainer
-                    config={chartConfig}
-                    className="mx-auto aspect-square max-h-[150px]"
-                >
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                        <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent hideLabel nameKey="name" formatter={(value) => formatCurrency(value as number)} />}
-                        />
-                        <Pie
-                            data={spendingByCategory}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={40}
-                            strokeWidth={5}
-                            outerRadius={60}
-                        >
-                            {spendingByCategory.map((entry) => (
-                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                            ))}
-                        </Pie>
-                        </PieChart>
-                    </ResponsiveContainer>
-                </ChartContainer>
-                <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-4">
+                <div className="w-2/3">
+                    <ChartContainer
+                        config={chartConfig}
+                        className="mx-auto aspect-square max-h-[150px]"
+                    >
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                            <ChartTooltip
+                                cursor={false}
+                                content={<ChartTooltipContent hideLabel nameKey="name" formatter={(value) => formatCurrency(value as number)} />}
+                            />
+                            <Pie
+                                data={spendingByCategory}
+                                dataKey="value"
+                                nameKey="name"
+                                innerRadius={40}
+                                strokeWidth={5}
+                                outerRadius={60}
+                            >
+                                {spendingByCategory.map((entry) => (
+                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                                ))}
+                            </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </ChartContainer>
+                </div>
+                <div className="w-1/3 flex flex-col justify-center">
                      <ul className="grid gap-1 text-xs">
                         {spendingByCategory.map((entry, index) => {
                             const percentage = totalExpenses > 0 ? (entry.value / totalExpenses * 100).toFixed(0) : 0;
