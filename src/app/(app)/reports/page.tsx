@@ -149,7 +149,7 @@ export default function ReportsPage() {
 
             <Card>
                 <CardHeader className="py-3">
-                    <CardTitle>Budget Breakdown</CardTitle>
+                    <CardTitle className="text-xs">Budget Breakdown</CardTitle>
                 </CardHeader>
             </Card>
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
