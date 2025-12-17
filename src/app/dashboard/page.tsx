@@ -15,7 +15,7 @@ import { collection, query, where } from 'firebase/firestore';
 import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { useMemo } from 'react';
-import { startOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 
 export default function DashboardPage() {
@@ -39,10 +39,12 @@ export default function DashboardPage() {
 
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        const monthStart = startOfMonth(currentMonth);
+        const monthStart = startOfMonth(currentMonth).toISOString();
+        const monthEnd = endOfMonth(currentMonth).toISOString();
         return query(
             collection(firestore, `users/${user.uid}/budgets`),
-            where('month', '>=', monthStart.toISOString())
+            where('month', '>=', monthStart),
+            where('month', '<=', monthEnd)
         );
     }, [firestore, user, currentMonth]);
     

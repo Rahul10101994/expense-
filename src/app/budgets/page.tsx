@@ -24,10 +24,12 @@ export default function BudgetsPage() {
 
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        const monthStart = startOfMonth(currentMonth);
+        const monthStart = startOfMonth(currentMonth).toISOString();
+        const monthEnd = endOfMonth(currentMonth).toISOString();
         return query(
             collection(firestore, `users/${user.uid}/budgets`),
-            where('month', '>=', monthStart.toISOString())
+            where('month', '>=', monthStart),
+            where('month', '<=', monthEnd)
         );
     }, [firestore, user, currentMonth]);
     
