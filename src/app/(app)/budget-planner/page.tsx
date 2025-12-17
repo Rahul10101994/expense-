@@ -40,6 +40,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
 import type { Budget, Category } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
+import AddCategoryForm from '@/components/categories/add-category-form';
 
 
 const categoryBudgetSchema = z.object({
@@ -322,6 +323,10 @@ export default function BudgetPlannerPage() {
                     <p className="text-sm font-medium text-muted-foreground">Remaining: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(remainingBudget)}</p>
                 </div>
                 
+                <div className="flex justify-end">
+                    <AddCategoryForm />
+                </div>
+
                  <ScrollArea className="h-[300px] pr-4">
                     <div className="space-y-2">
                     {expenseCategories?.map((category, index) => (
@@ -365,5 +370,3 @@ export default function BudgetPlannerPage() {
     </div>
   );
 }
-
-    
