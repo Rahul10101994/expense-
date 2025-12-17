@@ -61,6 +61,7 @@ const incomeSchema = baseSchema.extend({
   type: z.literal(TransactionType.Income),
   accountId: z.string({ required_error: 'Please select an account.' }),
   category: z.string({ required_error: 'Please select a category.' }),
+  expenseType: z.enum(['need', 'want']).optional(),
 });
 
 const expenseSchema = baseSchema.extend({
@@ -74,6 +75,7 @@ const investmentSchema = baseSchema.extend({
     type: z.literal(TransactionType.Investment),
     accountId: z.string({ required_error: 'Please select an account.' }),
     category: z.string({ required_error: 'Please select a category.' }),
+    expenseType: z.enum(['need', 'want']).optional(),
 });
 
 const transferSchema = baseSchema.extend({
@@ -188,7 +190,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
           });
       }
 
-    } else { // Income or Expense
+    } else { // Income, Expense, or Investment
       const { accountId, amount, type, ...rest } = values;
       const selectedAccount = accounts.find(acc => acc.id === accountId);
 
@@ -200,7 +202,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
       const transactionAmount = type === 'income' ? amount : -amount;
       const newBalance = selectedAccount.balance + transactionAmount;
 
-      const newTransactionData = {
+      const newTransactionData: Omit<Transaction, 'id'> = {
         ...rest,
         type,
         amount: transactionAmount,
@@ -208,8 +210,11 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
         category: values.category as Transaction['category'],
         accountId,
         userId: user.uid,
-        expenseType: values.type === 'expense' ? values.expenseType : undefined,
       };
+
+      if (values.type === 'expense' && values.expenseType) {
+        newTransactionData.expenseType = values.expenseType;
+      }
 
       const transactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`));
       batch.set(transactionRef, newTransactionData);
@@ -238,7 +243,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen} modal={false}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || (
           <Button>
