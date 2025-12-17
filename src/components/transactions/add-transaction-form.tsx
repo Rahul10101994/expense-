@@ -339,7 +339,13 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent
+                          className="w-auto p-0"
+                          align="start"
+                          onInteractOutside={(e) => {
+                            e.preventDefault();
+                          }}
+                        >
                           <Calendar
                             mode="single"
                             selected={field.value}
@@ -486,7 +492,5 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
     </Dialog>
   );
 }
-
-    
 
     
