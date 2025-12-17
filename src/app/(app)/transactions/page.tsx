@@ -87,7 +87,7 @@ export default function TransactionsPage() {
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                 {!isMobile && <AddTransactionForm onAddTransaction={handleAddTransaction} />}
+                 <AddTransactionForm onAddTransaction={handleAddTransaction} />
             </CardHeader>
             <CardContent>
                 <div className="flex flex-wrap gap-2 mb-4">
