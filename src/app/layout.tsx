@@ -1,3 +1,4 @@
+
 'use client';
 
 import './globals.css';
@@ -13,7 +14,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 
-export default function RootLayout({
+
+function AppContent({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -42,46 +44,50 @@ export default function RootLayout({
     }
   }, [userError, toast]);
   
-  const renderContent = () => {
-    if (isAuthPage) {
-      if (isUserLoading || user) {
-        return (
-          <div className="flex h-screen w-screen items-center justify-center">
-            <Spinner size="large" />
-          </div>
-        );
-      }
-      return children;
-    }
-
-    if (isUserLoading || !user) {
+  if (isAuthPage) {
+    if (isUserLoading || user) {
       return (
         <div className="flex h-screen w-screen items-center justify-center">
           <Spinner size="large" />
         </div>
       );
     }
-  
-    if (isMobile) {
-      return (
-        <>
-          <main className="pb-24 p-4">{children}</main>
-          <AppBottomNav />
-        </>
-      );
-    }
-  
+    return <>{children}</>;
+  }
+
+  if (isUserLoading || !user) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset className="p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
-          {children}
-        </SidebarInset>
-      </SidebarProvider>
+      <div className="flex h-screen w-screen items-center justify-center">
+        <Spinner size="large" />
+      </div>
     );
   }
 
+  if (isMobile) {
+    return (
+      <>
+        <main className="pb-24 p-4">{children}</main>
+        <AppBottomNav />
+      </>
+    );
+  }
 
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset className="p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -95,7 +101,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
         <FirebaseClientProvider>
-            {renderContent()}
+            <AppContent>{children}</AppContent>
         </FirebaseClientProvider>
         <Toaster />
       </body>
