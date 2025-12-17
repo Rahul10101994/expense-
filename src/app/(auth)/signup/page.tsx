@@ -66,7 +66,7 @@ export default function SignUpPage() {
     setIsSubmitting(true);
     try {
       await initiateEmailSignUp(auth, values.email, values.password);
-      // onAuthStateChanged will handle redirect
+      // onAuthStateChanged in layout will handle redirect
     } catch (error) {
        const firebaseError = error as FirebaseError;
        let errorMessage = 'An unexpected error occurred.';

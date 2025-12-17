@@ -64,7 +64,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await initiateEmailSignIn(auth, values.email, values.password);
-      // onAuthStateChanged will handle redirect
+      // onAuthStateChanged in layout will handle redirect
     } catch (error) {
       const firebaseError = error as FirebaseError;
       let errorMessage = 'An unexpected error occurred.';
@@ -85,7 +85,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await initiateAnonymousSignIn(auth);
-      // onAuthStateChanged will handle redirect
+      // onAuthStateChanged in layout will handle redirect
     } catch (error) {
        toast({
         variant: 'destructive',
