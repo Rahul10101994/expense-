@@ -90,6 +90,7 @@ type AddTransactionFormProps = {
 
 export default function AddTransactionForm({ onAddTransaction, children }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user } = useUser();
@@ -244,7 +245,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)}>
             <ScrollArea className="h-[450px] p-4">
               <div className="space-y-4">
                 <FormField
@@ -314,7 +315,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                 render={({ field }) => (
                     <FormItem className="flex flex-col">
                     <FormLabel>Transaction Date</FormLabel>
-                    <Popover>
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <PopoverTrigger asChild>
                         <FormControl>
                             <Button
@@ -337,7 +338,10 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                         <Calendar
                             mode="single"
                             selected={field.value}
-                            onSelect={field.onChange}
+                            onSelect={(date) => {
+                                field.onChange(date);
+                                setIsCalendarOpen(false);
+                            }}
                             initialFocus
                         />
                         </PopoverContent>
