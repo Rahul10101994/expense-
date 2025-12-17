@@ -57,15 +57,23 @@ const baseSchema = z.object({
   }),
 });
 
-const incomeExpenseSchema = baseSchema.extend({
-  type: z.enum([TransactionType.Income, TransactionType.Expense, TransactionType.Investment]),
-  accountId: z.string({
-    required_error: 'Please select an account.',
-  }),
-  category: z.string({
-    required_error: 'Please select a category.',
-  }),
+const incomeSchema = baseSchema.extend({
+  type: z.literal(TransactionType.Income),
+  accountId: z.string({ required_error: 'Please select an account.' }),
+  category: z.string({ required_error: 'Please select a category.' }),
+});
+
+const expenseSchema = baseSchema.extend({
+  type: z.literal(TransactionType.Expense),
+  accountId: z.string({ required_error: 'Please select an account.' }),
+  category: z.string({ required_error: 'Please select a category.' }),
   expenseType: z.enum(['need', 'want']).optional(),
+});
+
+const investmentSchema = baseSchema.extend({
+    type: z.literal(TransactionType.Investment),
+    accountId: z.string({ required_error: 'Please select an account.' }),
+    category: z.string({ required_error: 'Please select a category.' }),
 });
 
 const transferSchema = baseSchema.extend({
@@ -79,7 +87,9 @@ const transferSchema = baseSchema.extend({
 });
 
 const formSchema = z.discriminatedUnion("type", [
-    incomeExpenseSchema,
+    incomeSchema,
+    expenseSchema,
+    investmentSchema,
     transferSchema,
 ]);
 
