@@ -228,7 +228,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen} modal={false}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || (
           <Button>
