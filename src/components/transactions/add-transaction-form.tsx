@@ -344,9 +344,6 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                             mode="single"
                             selected={field.value}
                             onSelect={handleDateSelect}
-                            disabled={(date) =>
-                              date > new Date()
-                            }
                             initialFocus
                           />
                         </PopoverContent>
@@ -489,5 +486,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
     </Dialog>
   );
 }
+
+    
 
     
