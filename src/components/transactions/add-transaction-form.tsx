@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, type ReactNode } from 'react';
@@ -42,6 +43,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const baseSchema = z.object({
   description: z.string().min(2, {
@@ -63,6 +65,7 @@ const incomeExpenseSchema = baseSchema.extend({
   category: z.string({
     required_error: 'Please select a category.',
   }),
+  expenseType: z.enum(['need', 'want']).optional(),
 });
 
 const transferSchema = baseSchema.extend({
@@ -194,6 +197,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
         category: values.category as Transaction['category'],
         accountId,
         userId: user.uid,
+        expenseType: values.type === 'expense' ? values.expenseType : undefined,
       };
 
       const transactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`));
@@ -433,6 +437,38 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                         </FormItem>
                       )}
                     />
+                    {transactionType === 'expense' && (
+                        <FormField
+                            control={form.control}
+                            name="expenseType"
+                            render={({ field }) => (
+                                <FormItem className="space-y-3">
+                                <FormLabel>Is this a need or a want?</FormLabel>
+                                <FormControl>
+                                    <RadioGroup
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                    className="flex space-x-4"
+                                    >
+                                    <FormItem className="flex items-center space-x-2 space-y-0">
+                                        <FormControl>
+                                        <RadioGroupItem value="need" />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">Need</FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-2 space-y-0">
+                                        <FormControl>
+                                        <RadioGroupItem value="want" />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">Want</FormLabel>
+                                    </FormItem>
+                                    </RadioGroup>
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
                   </>
                 )}
                 

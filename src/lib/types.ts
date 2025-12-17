@@ -17,6 +17,7 @@ export type Transaction = {
   amount: number;
   category: TransactionCategory;
   type: TransactionType;
+  expenseType?: 'need' | 'want';
 };
 
 export type Account = {

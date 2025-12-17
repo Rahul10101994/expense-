@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getYear, getMonth, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function TransactionsPage() {
     const firestore = useFirestore();
@@ -155,7 +156,12 @@ export default function TransactionsPage() {
                                  <TableCell>
                                      <div className="flex items-center gap-2">
                                         <CategoryIcon category={transaction.category} className="h-4 w-4 text-muted-foreground"/>
-                                        <span>{transaction.category}</span>
+                                        <div className="flex flex-col">
+                                            <span>{transaction.category}</span>
+                                            {transaction.type === 'expense' && transaction.expenseType && (
+                                                <Badge variant={transaction.expenseType === 'need' ? 'default' : 'secondary'} className="capitalize w-fit text-xs px-1 h-4">{transaction.expenseType}</Badge>
+                                            )}
+                                        </div>
                                      </div>
                                 </TableCell>
                                 <TableCell className={cn(

@@ -100,6 +100,14 @@
         "type": {
           "type": "string",
           "description": "Type of transaction (income, expense, investment)."
+        },
+        "expenseType": {
+          "type": "string",
+          "description": "Classification of the expense as a 'need' or a 'want'.",
+          "enum": [
+            "need",
+            "want"
+          ]
         }
       },
       "required": [
