@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -66,7 +67,11 @@ export default function SignUpPage() {
     setIsSubmitting(true);
     try {
       await initiateEmailSignUp(auth, values.email, values.password);
-      // onAuthStateChanged in layout will handle redirect
+      toast({
+        title: 'Account Created',
+        description: 'You have been successfully signed up.',
+      });
+      router.push('/dashboard');
     } catch (error) {
        const firebaseError = error as FirebaseError;
        let errorMessage = 'An unexpected error occurred.';

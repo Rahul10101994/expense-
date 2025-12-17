@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,11 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await initiateEmailSignIn(auth, values.email, values.password);
-      // onAuthStateChanged in layout will handle redirect
+      toast({
+        title: 'Signed In',
+        description: "You've been successfully signed in.",
+      });
+      router.push('/dashboard');
     } catch (error) {
       const firebaseError = error as FirebaseError;
       let errorMessage = 'An unexpected error occurred.';
@@ -85,7 +90,11 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await initiateAnonymousSignIn(auth);
-      // onAuthStateChanged in layout will handle redirect
+      toast({
+        title: 'Signed In',
+        description: "You've been successfully signed in anonymously.",
+      });
+      router.push('/dashboard');
     } catch (error) {
        toast({
         variant: 'destructive',
