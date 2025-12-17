@@ -21,6 +21,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getYear, getMonth, format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
 
 export default function TransactionsPage() {
     const firestore = useFirestore();
@@ -63,7 +65,7 @@ export default function TransactionsPage() {
     }, [transactions, filterType, filterMonth, filterYear]);
     
     const yearOptions = useMemo(() => {
-        if (!transactions) return [];
+        if (!transactions || transactions.length === 0) return [];
         const years = new Set(transactions.map(t => getYear(new Date(t.date))));
         return Array.from(years).sort((a, b) => b - a);
     }, [transactions]);
@@ -87,7 +89,12 @@ export default function TransactionsPage() {
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                 <AddTransactionForm onAddTransaction={handleAddTransaction} />
+                 <AddTransactionForm onAddTransaction={handleAddTransaction}>
+                    <Button>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Transaction
+                    </Button>
+                </AddTransactionForm>
             </CardHeader>
             <CardContent>
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -113,7 +120,7 @@ export default function TransactionsPage() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <Select value={filterYear} onValueChange={setFilterYear}>
+                    <Select value={filterYear} onValueChange={setFilterYear} disabled={yearOptions.length === 0}>
                         <SelectTrigger className="w-full sm:w-[160px] h-9 text-xs">
                             <SelectValue placeholder="Filter by year" />
                         </SelectTrigger>
