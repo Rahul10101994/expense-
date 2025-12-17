@@ -44,8 +44,8 @@ const withPWA = require('@ducanh2912/next-pwa').default({
     description: 'Your personal finance dashboard.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#4f46e5',
+    background_color: '#E8EAF6',
+    theme_color: '#3F51B5',
     icons: [
       {
         src: '/icon.svg',
