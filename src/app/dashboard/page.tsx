@@ -11,10 +11,10 @@ import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-ch
 
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import Link from 'next/link';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { startOfMonth, endOfMonth } from 'date-fns';
 
 
@@ -22,14 +22,9 @@ export default function DashboardPage() {
     const firestore = useFirestore();
     const { user } = useUser();
     const currentMonth = useMemo(() => new Date(), []);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactionsLoading, setTransactionsLoading] = useState(true);
 
-    const transactionsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
-    }, [firestore, user]);
-    
-    const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
-    
     const accountsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return collection(firestore, `users/${user.uid}/accounts`);
@@ -37,14 +32,40 @@ export default function DashboardPage() {
 
     const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
 
+    useEffect(() => {
+        if (!user || !firestore || accountsLoading) return;
+
+        const fetchTransactions = async () => {
+            setTransactionsLoading(true);
+            const allTransactions: Transaction[] = [];
+            const accountIds = accounts?.map(acc => acc.id) || [];
+            if (accounts === null) { // Handle case with no accounts yet
+                 setTransactions([]);
+                 setTransactionsLoading(false);
+                 return;
+            }
+
+            for (const accountId of accountIds) {
+                const transactionsRef = collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`);
+                const q = query(transactionsRef);
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => {
+                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                });
+            }
+            setTransactions(allTransactions);
+            setTransactionsLoading(false);
+        };
+
+        fetchTransactions();
+    }, [user, firestore, accounts, accountsLoading]);
+
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;
         const monthStart = startOfMonth(currentMonth).toISOString();
-        const monthEnd = endOfMonth(currentMonth).toISOString();
         return query(
             collection(firestore, `users/${user.uid}/budgets`),
-            where('month', '>=', monthStart),
-            where('month', '<=', monthEnd)
+            where('month', '==', monthStart),
         );
     }, [firestore, user, currentMonth]);
     

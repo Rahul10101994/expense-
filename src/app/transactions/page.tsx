@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -16,7 +16,7 @@ import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import type { Transaction, Account } from '@/lib/types';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, getDocs } from 'firebase/firestore';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,21 +30,55 @@ export default function TransactionsPage() {
     const { user } = useUser();
     const isMobile = useIsMobile();
     
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    
     const [filterType, setFilterType] = useState('all');
     const [filterMonth, setFilterMonth] = useState('all');
     const [filterYear, setFilterYear] = useState('all');
 
-    const transactionsQuery = useMemoFirebase(() => {
+    const accountsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
+        return collection(firestore, `users/${user.uid}/accounts`);
     }, [firestore, user]);
-    
-    const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);
+    const { data: accounts } = useCollection<Account>(accountsQuery);
+
+    useEffect(() => {
+        if (!user || !firestore || !accounts) {
+             if (accounts === null) { // Handle case with no accounts yet
+                setIsLoading(false);
+                setTransactions([]);
+             }
+            return;
+        };
+
+        const fetchTransactions = async () => {
+            setIsLoading(true);
+            const allTransactions: Transaction[] = [];
+            const accountIds = accounts.map(acc => acc.id);
+
+            for (const accountId of accountIds) {
+                const transactionsRef = collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`);
+                const q = query(transactionsRef);
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => {
+                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                });
+            }
+            setTransactions(allTransactions);
+            setIsLoading(false);
+        };
+
+        fetchTransactions();
+    }, [user, firestore, accounts]);
 
     const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
-        // The form now handles adding the document.
-        // We can use this callback to optimistically update the UI if needed,
-        // but for now, we'll let the real-time listener handle it.
+       // Optimistically update the UI
+       const fullTransaction: Transaction = {
+         ...newTransaction,
+         id: new Date().toISOString() // temporary ID
+       };
+       setTransactions(prev => [fullTransaction, ...prev]);
     };
     
     const filteredTransactions = useMemo(() => {
