@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -98,9 +98,10 @@ const formSchema = z.discriminatedUnion("type", [
 type AddTransactionFormProps = {
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   children?: ReactNode;
+  transactionToEdit?: Transaction;
 };
 
-export default function AddTransactionForm({ onAddTransaction, children }: AddTransactionFormProps) {
+export default function AddTransactionForm({ onAddTransaction, children, transactionToEdit }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const { toast } = useToast();
@@ -116,7 +117,11 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: transactionToEdit ? {
+        ...transactionToEdit,
+        amount: Math.abs(transactionToEdit.amount),
+        date: new Date(transactionToEdit.date),
+    } : {
       type: TransactionType.Expense,
       description: '',
       amount: 0,
@@ -124,13 +129,31 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
     },
   });
 
+  useEffect(() => {
+      if (transactionToEdit) {
+        form.reset({
+            ...transactionToEdit,
+            amount: Math.abs(transactionToEdit.amount),
+            date: new Date(transactionToEdit.date),
+        });
+      }
+  }, [transactionToEdit, form]);
+
   const transactionType = form.watch('type');
+  const isEditMode = !!transactionToEdit;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!firestore || !user || !accounts) return;
     const batch = writeBatch(firestore);
 
     if (values.type === TransactionType.Transfer) {
+      // Transfer logic is complex to edit, often better to delete and recreate.
+      // For this implementation, we'll assume transfer edits are not supported via this form.
+      if (isEditMode) {
+          toast({ variant: 'destructive', title: 'Not Supported', description: 'Editing a transfer is not supported. Please delete and recreate it.' });
+          return;
+      }
+        
       const { fromAccountId, toAccountId, amount, date, description } = values;
       const fromAccount = accounts.find(acc => acc.id === fromAccountId);
       const toAccount = accounts.find(acc => acc.id === toAccountId);
@@ -144,30 +167,16 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
         return;
       }
 
-      // Create two transactions for the transfer
       const expenseTransactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${fromAccountId}/transactions`));
       batch.set(expenseTransactionRef, {
-        description: `Transfer to ${toAccount.name}`,
-        amount: -amount,
-        date: date.toISOString(),
-        type: TransactionType.Expense,
-        category: 'Transfer',
-        accountId: fromAccountId,
-        userId: user.uid,
+        description: `Transfer to ${toAccount.name}`, amount: -amount, date: date.toISOString(), type: TransactionType.Expense, category: 'Transfer', accountId: fromAccountId, userId: user.uid,
       });
 
       const incomeTransactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${toAccountId}/transactions`));
       batch.set(incomeTransactionRef, {
-        description: `Transfer from ${fromAccount.name}`,
-        amount: amount,
-        date: date.toISOString(),
-        type: TransactionType.Income,
-        category: 'Transfer',
-        accountId: toAccountId,
-        userId: user.uid,
+        description: `Transfer from ${fromAccount.name}`, amount: amount, date: date.toISOString(), type: TransactionType.Income, category: 'Transfer', accountId: toAccountId, userId: user.uid,
       });
 
-      // Update balances
       const fromAccountRef = doc(firestore, `users/${user.uid}/accounts`, fromAccountId);
       batch.update(fromAccountRef, { balance: fromAccount.balance - amount });
       const toAccountRef = doc(firestore, `users/${user.uid}/accounts`, toAccountId);
@@ -175,22 +184,15 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
       
       try {
         await batch.commit();
-        toast({
-            title: 'Transfer Successful',
-            description: `Transferred ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${fromAccount.name} to ${toAccount.name}.`,
-        });
+        toast({ title: 'Transfer Successful' });
         setOpen(false);
         form.reset();
       } catch(e) {
          console.error('Error completing transfer:', e);
-          toast({
-              variant: 'destructive',
-              title: 'Error',
-              description: 'Failed to complete transfer. Please try again.',
-          });
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete transfer.'});
       }
 
-    } else { // Income, Expense, or Investment
+    } else { 
       const { accountId, amount, type, description, date, category } = values;
       const selectedAccount = accounts.find(acc => acc.id === accountId);
 
@@ -200,69 +202,67 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
       }
 
       const transactionAmount = type === 'income' ? amount : -amount;
-      const newBalance = selectedAccount.balance + transactionAmount;
-
+      
       const newTransactionData: Omit<Transaction, 'id'> = {
-        description,
-        type,
-        amount: transactionAmount,
-        date: date.toISOString(),
-        category: category as Transaction['category'],
-        accountId,
-        userId: user.uid,
+        description, type, amount: transactionAmount, date: date.toISOString(), category: category as Transaction['category'], accountId, userId: user.uid,
       };
 
       if (values.type === 'expense' && values.expenseType) {
         newTransactionData.expenseType = values.expenseType;
       }
 
-      const transactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`));
-      batch.set(transactionRef, newTransactionData);
+      if (isEditMode && transactionToEdit) {
+        const transactionRef = doc(firestore, `users/${user.uid}/accounts/${accountId}/transactions`, transactionToEdit.id);
+        const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountId);
 
-      const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountId);
-      batch.update(accountRef, { balance: newBalance });
+        const originalAmount = transactionToEdit.amount;
+        const balanceChange = transactionAmount - originalAmount;
+        const newBalance = selectedAccount.balance + balanceChange;
+        
+        batch.set(transactionRef, newTransactionData, { merge: true });
+        batch.update(accountRef, { balance: newBalance });
+
+      } else {
+        const transactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`));
+        const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountId);
+        const newBalance = selectedAccount.balance + transactionAmount;
+        batch.set(transactionRef, newTransactionData);
+        batch.update(accountRef, { balance: newBalance });
+      }
 
       try {
         await batch.commit();
         onAddTransaction(newTransactionData as Omit<Transaction, 'id'>);
         toast({
-            title: 'Transaction Added',
+            title: isEditMode ? 'Transaction Updated' : 'Transaction Added',
             description: `${values.description} has been successfully recorded.`,
         });
         setOpen(false);
-        form.reset();
+        if (!isEditMode) form.reset();
       } catch (error) {
-        console.error('Error adding transaction:', error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to add transaction. Please try again.',
-        });
+        console.error('Error saving transaction:', error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save transaction.' });
       }
     }
   }
+  
+  const DialogWrapper = ({ children }: { children: ReactNode }) => {
+      if (isEditMode) {
+          return <>{children}</>
+      }
+      return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            {children}
+        </Dialog>
+      )
+  }
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Transaction
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add New Transaction</DialogTitle>
-          <DialogDescription>
-            Enter the details of your new transaction.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[450px] p-4">
-              <div className="space-y-4">
+  const FormContent = () => (
+    <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <ScrollArea className={cn(isEditMode ? "h-auto" : "h-[450px]", "p-4")}>
+            <div className="space-y-4">
+            {!isEditMode && (
                 <FormField
                 control={form.control}
                 name="type"
@@ -271,232 +271,192 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                     <FormLabel>Type</FormLabel>
                     <FormControl>
                         <div className="grid grid-cols-3 gap-2">
-                        <Button
-                            type="button"
-                            variant={field.value === TransactionType.Income ? 'default' : 'outline'}
-                            onClick={() => { field.onChange(TransactionType.Income); form.setValue('category', 'Income'); }}
-                        >
-                            Income
-                        </Button>
-                        <Button
-                            type="button"
-                            variant={field.value === TransactionType.Expense ? 'default' : 'outline'}
-                            onClick={() => { field.onChange(TransactionType.Expense); form.setValue('category', 'Food'); }}
-                        >
-                            Expense
-                        </Button>
-                        <Button
-                            type="button"
-                            variant={field.value === TransactionType.Transfer ? 'default' : 'outline'}
-                            onClick={() => { field.onChange(TransactionType.Transfer); }}
-                        >
-                            Transfer
-                        </Button>
+                        <Button type="button" variant={field.value === TransactionType.Income ? 'default' : 'outline'} onClick={() => { field.onChange(TransactionType.Income); form.setValue('category', 'Income'); }}>Income</Button>
+                        <Button type="button" variant={field.value === TransactionType.Expense ? 'default' : 'outline'} onClick={() => { field.onChange(TransactionType.Expense); form.setValue('category', 'Food'); }}>Expense</Button>
+                        <Button type="button" variant={field.value === TransactionType.Transfer ? 'default' : 'outline'} onClick={() => { field.onChange(TransactionType.Transfer); }}>Transfer</Button>
                         </div>
                     </FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
                 />
+            )}
+            <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl><Input placeholder="e.g., Groceries" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Amount</FormLabel>
+                <FormControl><Input type="number" placeholder="e.g., 50.00" {...field} /></FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+                <FormItem className="flex flex-col">
+                <FormLabel>Transaction Date</FormLabel>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <PopoverTrigger asChild>
+                    <FormControl>
+                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>
+                        {field.value ? (format(field.value, "PPP")) : (<span>Pick a date</span>)}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                    </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={(date) => { field.onChange(date); setIsCalendarOpen(false); }}
+                        initialFocus
+                    />
+                    </PopoverContent>
+                </Popover>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            
+            {transactionType === TransactionType.Transfer ? (
+            <>
                 <FormField
                 control={form.control}
-                name="description"
+                name="fromAccountId"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                        <Input placeholder="e.g., Groceries" {...field} />
-                    </FormControl>
+                    <FormLabel>From Account</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                        {accounts?.map((account) => (<SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
                     <FormMessage />
                     </FormItem>
                 )}
                 />
                 <FormField
                 control={form.control}
-                name="amount"
+                name="toAccountId"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Amount</FormLabel>
-                    <FormControl>
-                        <Input type="number" placeholder="e.g., 50.00" {...field} />
-                    </FormControl>
+                    <FormLabel>To Account</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                        {accounts?.map((account) => (<SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </>
+            ) : (
+            <>
+                <FormField
+                control={form.control}
+                name="accountId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Account</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                        {accounts?.map((account) => (<SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
                     <FormMessage />
                     </FormItem>
                 )}
                 />
                 <FormField
                 control={form.control}
-                name="date"
+                name="category"
                 render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                    <FormLabel>Transaction Date</FormLabel>
-                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                        <PopoverTrigger asChild>
-                        <FormControl>
-                            <Button
-                            variant={"outline"}
-                            className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                            )}
-                            >
-                            {field.value ? (
-                                format(field.value, "PPP")
-                            ) : (
-                                <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                        </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={(date) => {
-                                field.onChange(date);
-                                setIsCalendarOpen(false);
-                            }}
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
+                    <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                        {categories.filter(c => transactionType === TransactionType.Income ? c === 'Income' : c !== 'Income').map((category) => (<SelectItem key={category} value={category}>{category}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
                     <FormMessage />
                     </FormItem>
                 )}
                 />
-                
-                {transactionType === TransactionType.Transfer ? (
-                <>
+                {transactionType === 'expense' && (
                     <FormField
-                    control={form.control}
-                    name="fromAccountId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>From Account</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
+                        control={form.control}
+                        name="expenseType"
+                        render={({ field }) => (
+                            <FormItem className="space-y-3">
+                            <FormLabel>Is this a need or a want?</FormLabel>
                             <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {accounts?.map((account) => (
-                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="toAccountId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>To Account</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
-                            <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {accounts?.map((account) => (
-                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </>
-                ) : (
-                <>
-                    <FormField
-                    control={form.control}
-                    name="accountId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Account</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
-                            <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {accounts?.map((account) => (
-                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {categories
-                                .filter(c => transactionType === TransactionType.Income ? c === 'Income' : c !== 'Income')
-                                .map((category) => (
-                                <SelectItem key={category} value={category}>{category}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    {transactionType === 'expense' && (
-                        <FormField
-                            control={form.control}
-                            name="expenseType"
-                            render={({ field }) => (
-                                <FormItem className="space-y-3">
-                                <FormLabel>Is this a need or a want?</FormLabel>
-                                <FormControl>
-                                    <RadioGroup
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                    className="flex space-x-4"
-                                    >
-                                    <FormItem className="flex items-center space-x-2 space-y-0">
-                                        <FormControl>
-                                        <RadioGroupItem value="need" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">Need</FormLabel>
-                                    </FormItem>
-                                    <FormItem className="flex items-center space-x-2 space-y-0">
-                                        <FormControl>
-                                        <RadioGroupItem value="want" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">Want</FormLabel>
-                                    </FormItem>
-                                    </RadioGroup>
-                                </FormControl>
-                                <FormMessage />
+                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex space-x-4">
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="need" /></FormControl>
+                                    <FormLabel className="font-normal">Need</FormLabel>
                                 </FormItem>
-                            )}
-                        />
-                    )}
-                </>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="want" /></FormControl>
+                                    <FormLabel className="font-normal">Want</FormLabel>
+                                </FormItem>
+                                </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 )}
-              </div>
-            </ScrollArea>
-            <DialogFooter className="p-6 pt-4 border-t">
-              <Button type="submit">Add Transaction</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            </>
+            )}
+            </div>
+        </ScrollArea>
+        <DialogFooter className="p-6 pt-4 border-t">
+            <Button type="submit">{isEditMode ? 'Save Changes' : 'Add Transaction'}</Button>
+        </DialogFooter>
+        </form>
+    </Form>
+  );
+
+  return (
+    <DialogWrapper>
+      {!isEditMode && (
+          <DialogTrigger asChild>
+          {children || (
+              <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Transaction
+              </Button>
+          )}
+          </DialogTrigger>
+      )}
+      {isEditMode ? <FormContent/> : (
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Add New Transaction</DialogTitle>
+                <DialogDescription>Enter the details of your new transaction.</DialogDescription>
+            </DialogHeader>
+            <FormContent/>
+        </DialogContent>
+      )}
+    </DialogWrapper>
   );
 }
-
-    

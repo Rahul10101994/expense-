@@ -24,6 +24,7 @@ import { getYear, getMonth, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import ManageTransactionDialog from '@/components/transactions/manage-transaction-dialog';
 
 export default function TransactionsPage() {
     const firestore = useFirestore();
@@ -45,7 +46,7 @@ export default function TransactionsPage() {
 
     useEffect(() => {
         if (!user || !firestore || !accounts) {
-             if (accounts === null) { // Handle case with no accounts yet
+             if (accounts === null) { 
                 setIsLoading(false);
                 setTransactions([]);
              }
@@ -73,12 +74,19 @@ export default function TransactionsPage() {
     }, [user, firestore, accounts]);
 
     const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
-       // Optimistically update the UI
        const fullTransaction: Transaction = {
          ...newTransaction,
-         id: new Date().toISOString() // temporary ID
+         id: new Date().toISOString()
        };
        setTransactions(prev => [fullTransaction, ...prev]);
+    };
+
+    const handleUpdateTransaction = (updatedTransaction: Transaction) => {
+        setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
+    };
+
+    const handleDeleteTransaction = (deletedTransactionId: string) => {
+        setTransactions(prev => prev.filter(t => t.id !== deletedTransactionId));
     };
     
     const filteredTransactions = useMemo(() => {
@@ -178,8 +186,9 @@ export default function TransactionsPage() {
                         <TableRow>
                             <TableHead>Description</TableHead>
                             <TableHead>Date</TableHead>
-                             <TableHead>Category</TableHead>
+                            <TableHead>Category</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -187,22 +196,29 @@ export default function TransactionsPage() {
                             <TableRow key={transaction.id}>
                                 <TableCell className="font-medium">{transaction.description}</TableCell>
                                 <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                                 <TableCell>
-                                     <div className="flex items-center gap-2">
-                                        <CategoryIcon category={transaction.category} className="h-4 w-4 text-muted-foreground"/>
-                                        <div className="flex flex-col">
-                                            <span>{transaction.category}</span>
-                                            {transaction.type === 'expense' && transaction.expenseType && (
-                                                <Badge variant={transaction.expenseType === 'need' ? 'default' : 'secondary'} className="capitalize w-fit text-xs px-1 h-4">{transaction.expenseType}</Badge>
-                                            )}
-                                        </div>
-                                     </div>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                    <CategoryIcon category={transaction.category} className="h-4 w-4 text-muted-foreground"/>
+                                    <div className="flex flex-col">
+                                        <span>{transaction.category}</span>
+                                        {transaction.type === 'expense' && transaction.expenseType && (
+                                            <Badge variant={transaction.expenseType === 'need' ? 'default' : 'secondary'} className="capitalize w-fit text-xs px-1 h-4">{transaction.expenseType}</Badge>
+                                        )}
+                                    </div>
+                                    </div>
                                 </TableCell>
                                 <TableCell className={cn(
                                     "text-right font-medium",
                                     transaction.type === 'income' ? 'text-green-500' : 'text-foreground'
                                 )}>
                                     {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.type === 'income' ? transaction.amount : transaction.amount)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <ManageTransactionDialog 
+                                        transaction={transaction}
+                                        onTransactionUpdate={handleUpdateTransaction}
+                                        onTransactionDelete={handleDeleteTransaction}
+                                    />
                                 </TableCell>
                             </TableRow>
                         ))}
