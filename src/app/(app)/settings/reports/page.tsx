@@ -18,6 +18,7 @@ import BudgetGoals from '@/components/dashboard/budget-goals';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import NeedsWantsChart from '@/components/dashboard/needs-wants-chart';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 
@@ -237,13 +238,18 @@ export default function ReportsPage() {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-               <Card>
+            <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+               <Card className="lg:col-span-5">
                     <IncomeExpenseChart transactions={filteredTransactions} />
                 </Card>
-                <Card>
-                    <SpendingBreakdownChart transactions={filteredTransactions} />
-                </Card>
+                 <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+                    <Card>
+                        <SpendingBreakdownChart transactions={filteredTransactions} />
+                    </Card>
+                     <Card>
+                        <NeedsWantsChart transactions={filteredTransactions} />
+                    </Card>
+                </div>
             </div>
             
             <BudgetGoals budgets={budgets} />
