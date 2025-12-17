@@ -29,7 +29,7 @@ export default function ReportsPage() {
 
     const [period, setPeriod] = useState<Period>(searchParams.get('period') as Period || 'currentMonth');
     const [selectedYear, setSelectedYear] = useState<number>(searchParams.get('year') ? parseInt(searchParams.get('year')!) : getYear(new Date()));
-    const [selectedMonth, setSelectedMonth] = useState<number>(search_params.get('month') ? parseInt(search_params.get('month')!) : getMonth(new Date()));
+    const [selectedMonth, setSelectedMonth] = useState<number>(searchParams.get('month') ? parseInt(searchParams.get('month')!) : getMonth(new Date()));
     
     const handleFilterChange = (type: 'period' | 'year' | 'month', value: string) => {
         const params = new URLSearchParams(searchParams);
