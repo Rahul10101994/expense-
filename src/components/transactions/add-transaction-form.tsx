@@ -112,12 +112,6 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
   });
 
   const transactionType = form.watch('type');
-  
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      form.setValue('date', date, { shouldValidate: true });
-    }
-  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!firestore || !user || !accounts) return;
@@ -233,7 +227,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         {children || (
           <Button>
@@ -242,254 +236,246 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md grid-rows-[auto_minmax(0,1fr)_auto] p-0 max-h-[90vh]">
-        <DialogHeader className="p-4 pb-0">
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
           <DialogTitle>Add New Transaction</DialogTitle>
           <DialogDescription>
             Enter the details of your new transaction.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
-                <ScrollArea className="h-full px-6 pt-2">
-                    <div className="space-y-4">
-                        <FormField
-                        control={form.control}
-                        name="type"
-                        render={({ field }) => (
-                            <FormItem className="space-y-2">
-                            <FormLabel>Type</FormLabel>
-                            <FormControl>
-                                <div className="grid grid-cols-3 gap-2">
-                                <Button
-                                    type="button"
-                                    variant={field.value === TransactionType.Income ? 'default' : 'outline'}
-                                    onClick={() => { field.onChange(TransactionType.Income); form.setValue('category', 'Income'); }}
-                                >
-                                    Income
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={field.value === TransactionType.Expense ? 'default' : 'outline'}
-                                    onClick={() => { field.onChange(TransactionType.Expense); form.setValue('category', 'Food'); }}
-                                >
-                                    Expense
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={field.value === TransactionType.Transfer ? 'default' : 'outline'}
-                                    onClick={() => { field.onChange(TransactionType.Transfer); }}
-                                >
-                                    Transfer
-                                </Button>
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <ScrollArea className="h-[450px] p-4">
+              <div className="space-y-4">
+                <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                    <FormItem className="space-y-2">
+                    <FormLabel>Type</FormLabel>
+                    <FormControl>
+                        <div className="grid grid-cols-3 gap-2">
+                        <Button
+                            type="button"
+                            variant={field.value === TransactionType.Income ? 'default' : 'outline'}
+                            onClick={() => { field.onChange(TransactionType.Income); form.setValue('category', 'Income'); }}
+                        >
+                            Income
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={field.value === TransactionType.Expense ? 'default' : 'outline'}
+                            onClick={() => { field.onChange(TransactionType.Expense); form.setValue('category', 'Food'); }}
+                        >
+                            Expense
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={field.value === TransactionType.Transfer ? 'default' : 'outline'}
+                            onClick={() => { field.onChange(TransactionType.Transfer); }}
+                        >
+                            Transfer
+                        </Button>
+                        </div>
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., Groceries" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                        <Input type="number" placeholder="e.g., 50.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Transaction Date</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                            )}
+                            >
+                            {field.value ? (
+                                format(field.value, "PPP")
+                            ) : (
+                                <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
                         />
-                        <FormField
-                        control={form.control}
-                        name="description"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Description</FormLabel>
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                
+                {transactionType === TransactionType.Transfer ? (
+                <>
+                    <FormField
+                    control={form.control}
+                    name="fromAccountId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>From Account</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
                             <FormControl>
-                                <Input placeholder="e.g., Groceries" {...field} />
+                            <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="amount"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Amount</FormLabel>
+                            <SelectContent>
+                            {accounts?.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="toAccountId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>To Account</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
                             <FormControl>
-                                <Input type="number" placeholder="e.g., 50.00" {...field} />
+                            <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
+                            <SelectContent>
+                            {accounts?.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </>
+                ) : (
+                <>
+                    <FormField
+                    control={form.control}
+                    name="accountId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Account</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
+                            <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {accounts?.map((account) => (
+                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {categories
+                                .filter(c => transactionType === TransactionType.Income ? c === 'Income' : c !== 'Income')
+                                .map((category) => (
+                                <SelectItem key={category} value={category}>{category}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    {transactionType === 'expense' && (
                         <FormField
-                        control={form.control}
-                        name="date"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                            <FormLabel>Transaction Date</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
+                            control={form.control}
+                            name="expenseType"
+                            render={({ field }) => (
+                                <FormItem className="space-y-3">
+                                <FormLabel>Is this a need or a want?</FormLabel>
                                 <FormControl>
-                                    <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full pl-3 text-left font-normal",
-                                        !field.value && "text-muted-foreground"
-                                    )}
+                                    <RadioGroup
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                    className="flex space-x-4"
                                     >
-                                    {field.value ? (
-                                        format(field.value, "PPP")
-                                    ) : (
-                                        <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                                onInteractOutside={(e) => {
-                                    e.preventDefault();
-                                }}
-                                >
-                                <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={handleDateSelect}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        
-                        {transactionType === TransactionType.Transfer ? (
-                        <>
-                            <FormField
-                            control={form.control}
-                            name="fromAccountId"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>From Account</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
-                                    <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {accounts?.map((account) => (
-                                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            <FormField
-                            control={form.control}
-                            name="toAccountId"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>To Account</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
-                                    <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {accounts?.map((account) => (
-                                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                        </>
-                        ) : (
-                        <>
-                            <FormField
-                            control={form.control}
-                            name="accountId"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Account</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={accountsLoading}>
-                                    <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select an account" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {accounts?.map((account) => (
-                                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Category</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {categories
-                                        .filter(c => transactionType === TransactionType.Income ? c === 'Income' : c !== 'Income')
-                                        .map((category) => (
-                                        <SelectItem key={category} value={category}>{category}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            {transactionType === 'expense' && (
-                                <FormField
-                                    control={form.control}
-                                    name="expenseType"
-                                    render={({ field }) => (
-                                        <FormItem className="space-y-3">
-                                        <FormLabel>Is this a need or a want?</FormLabel>
+                                    <FormItem className="flex items-center space-x-2 space-y-0">
                                         <FormControl>
-                                            <RadioGroup
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                            className="flex space-x-4"
-                                            >
-                                            <FormItem className="flex items-center space-x-2 space-y-0">
-                                                <FormControl>
-                                                <RadioGroupItem value="need" />
-                                                </FormControl>
-                                                <FormLabel className="font-normal">Need</FormLabel>
-                                            </FormItem>
-                                            <FormItem className="flex items-center space-x-2 space-y-0">
-                                                <FormControl>
-                                                <RadioGroupItem value="want" />
-                                                </FormControl>
-                                                <FormLabel className="font-normal">Want</FormLabel>
-                                            </FormItem>
-                                            </RadioGroup>
+                                        <RadioGroupItem value="need" />
                                         </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                        <FormLabel className="font-normal">Need</FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-2 space-y-0">
+                                        <FormControl>
+                                        <RadioGroupItem value="want" />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">Want</FormLabel>
+                                    </FormItem>
+                                    </RadioGroup>
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
                             )}
-                        </>
-                        )}
-                    </div>
-                </ScrollArea>
-                <DialogFooter className="p-6 pt-4 border-t">
-                  <Button type="submit">Add Transaction</Button>
-                </DialogFooter>
-            </form>
+                        />
+                    )}
+                </>
+                )}
+              </div>
+            </ScrollArea>
+            <DialogFooter className="p-6 pt-4 border-t">
+              <Button type="submit">Add Transaction</Button>
+            </DialogFooter>
+          </form>
         </Form>
       </DialogContent>
     </Dialog>
   );
 }
-
-    
