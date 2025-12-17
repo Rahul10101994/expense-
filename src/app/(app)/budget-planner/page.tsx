@@ -36,10 +36,9 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { categories } from '@/lib/data';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
-import type { Budget } from '@/lib/types';
+import type { Budget, Category } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 
 
@@ -57,9 +56,6 @@ const budgetFormSchema = z.object({
   categoryBudgets: z.array(categoryBudgetSchema),
 });
 
-
-const expenseCategories = categories.filter(c => c !== 'Income' && c !== 'Investment');
-
 export default function BudgetPlannerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const firestore = useFirestore();
@@ -69,15 +65,31 @@ export default function BudgetPlannerPage() {
 
   const currentMonth = format(new Date(), 'yyyy-MM');
 
+  const categoriesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+        collection(firestore, `users/${user.uid}/categories`),
+        where('type', '==', 'expense')
+    );
+  }, [firestore, user]);
+
+  const { data: expenseCategories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
+
   const form = useForm<z.infer<typeof budgetFormSchema>>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
       totalAmount: 0,
       month: currentMonth,
       carryForward: false,
-      categoryBudgets: expenseCategories.map(cat => ({ category: cat, amount: 0 })),
+      categoryBudgets: [],
     },
   });
+
+  useEffect(() => {
+    if (expenseCategories) {
+        form.setValue('categoryBudgets', expenseCategories.map(cat => ({ category: cat.name, amount: 0 })))
+    }
+  }, [expenseCategories, form]);
 
   const selectedMonth = form.watch('month');
   const totalBudget = form.watch('totalAmount');
@@ -94,7 +106,7 @@ export default function BudgetPlannerPage() {
   const { data: existingBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
   useEffect(() => {
-    if (budgetsLoading) {
+    if (budgetsLoading || !expenseCategories) {
       return;
     }
   
@@ -102,8 +114,8 @@ export default function BudgetPlannerPage() {
       if (existingBudgets.length > 0) {
         const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
         const categoryBudgets = expenseCategories.map(cat => {
-          const existing = existingBudgets.find(b => b.categoryId === cat);
-          return { category: cat, amount: existing?.amount || 0 };
+          const existing = existingBudgets.find(b => b.categoryId === cat.name);
+          return { category: cat.name, amount: existing?.amount || 0 };
         });
   
         form.reset({
@@ -114,10 +126,10 @@ export default function BudgetPlannerPage() {
         });
       } else {
         // Only reset amounts, keep month and total amount if user was editing
-        form.setValue('categoryBudgets', expenseCategories.map(cat => ({ category: cat, amount: 0 })));
+        form.setValue('categoryBudgets', expenseCategories.map(cat => ({ category: cat.name, amount: 0 })));
       }
     }
-  }, [existingBudgets, budgetsLoading, selectedMonth, form]);
+  }, [existingBudgets, budgetsLoading, selectedMonth, form, expenseCategories]);
 
 
   async function onSubmit(values: z.infer<typeof budgetFormSchema>) {
@@ -207,7 +219,7 @@ export default function BudgetPlannerPage() {
 
   const remainingBudget = totalBudget - (form.watch('categoryBudgets')?.reduce((acc, b) => acc + (Number(b.amount) || 0), 0) || 0);
 
-  if (budgetsLoading) {
+  if (budgetsLoading || categoriesLoading) {
       return (
           <div className="flex h-64 w-full items-center justify-center">
               <Spinner size="large" />
@@ -312,15 +324,15 @@ export default function BudgetPlannerPage() {
                 
                  <ScrollArea className="h-[300px] pr-4">
                     <div className="space-y-2">
-                    {expenseCategories.map((category, index) => (
+                    {expenseCategories?.map((category, index) => (
                       <FormField
-                        key={category}
+                        key={category.id}
                         control={form.control}
                         name={`categoryBudgets.${index}.amount`}
                         render={({ field: formField }) => (
                           <FormItem>
                             <div className="flex items-center justify-between">
-                              <FormLabel>{category}</FormLabel>
+                              <FormLabel>{category.name}</FormLabel>
                               <FormControl>
                                 <Input
                                   type="number"
@@ -353,3 +365,5 @@ export default function BudgetPlannerPage() {
     </div>
   );
 }
+
+    
