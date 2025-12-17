@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: 'FinanceFlow',
   description: 'Your personal finance dashboard.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

@@ -38,6 +38,22 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  manifest: {
+    name: 'FinanceFlow',
+    short_name: 'FinanceFlow',
+    description: 'Your personal finance dashboard.',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#ffffff',
+    theme_color: '#4f46e5',
+    icons: [
+      {
+        src: '/icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
+      },
+    ],
+  },
 });
 
 export default withPWA(nextConfig);
