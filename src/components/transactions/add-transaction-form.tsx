@@ -112,6 +112,12 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
   });
 
   const transactionType = form.watch('type');
+  
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      form.setValue('date', date, { shouldValidate: true });
+    }
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!firestore || !user || !accounts) return;
@@ -337,7 +343,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
                           <Calendar
                             mode="single"
                             selected={field.value}
-                            onSelect={field.onChange}
+                            onSelect={handleDateSelect}
                             disabled={(date) =>
                               date > new Date()
                             }
@@ -483,3 +489,5 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
     </Dialog>
   );
 }
+
+    
