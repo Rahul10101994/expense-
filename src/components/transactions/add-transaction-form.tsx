@@ -191,7 +191,7 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
       }
 
     } else { // Income, Expense, or Investment
-      const { accountId, amount, type, ...rest } = values;
+      const { accountId, amount, type, description, date, category } = values;
       const selectedAccount = accounts.find(acc => acc.id === accountId);
 
       if (!selectedAccount) {
@@ -203,11 +203,11 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
       const newBalance = selectedAccount.balance + transactionAmount;
 
       const newTransactionData: Omit<Transaction, 'id'> = {
-        ...rest,
+        description,
         type,
         amount: transactionAmount,
-        date: values.date.toISOString(),
-        category: values.category as Transaction['category'],
+        date: date.toISOString(),
+        category: category as Transaction['category'],
         accountId,
         userId: user.uid,
       };
