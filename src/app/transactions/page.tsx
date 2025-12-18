@@ -37,43 +37,48 @@ export default function TransactionsPage() {
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [refreshKey, setRefreshKey] = useState(0);
 
-    const fetchAllData = useCallback(async () => {
-        if (!user || !firestore) {
-            setIsLoading(false);
-            return;
-        };
-        setIsLoading(true);
-
-        // 1. Fetch accounts
-        const fetchedAccounts: Account[] = [];
-        const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
-        accountsSnapshot.forEach(doc => {
-            fetchedAccounts.push({ id: doc.id, ...doc.data() } as Account);
-        });
-        setAccounts(fetchedAccounts);
-        
-        // 2. Fetch transactions for all accounts
-        const fetchedTransactions: Transaction[] = [];
-        for (const account of fetchedAccounts) {
-            const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
-            const transactionsQuery = query(transactionsColRef, orderBy('date', 'desc'));
-            const transactionsSnapshot = await getDocs(transactionsQuery);
-            transactionsSnapshot.forEach(doc => {
-                fetchedTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
-            });
-        }
-        
-        // Sort all transactions by date after fetching
-        fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        setTransactions(fetchedTransactions);
-        setIsLoading(false);
-    }, [user, firestore]);
+    const handleTransactionAdded = () => {
+        setRefreshKey(oldKey => oldKey + 1);
+    };
 
     useEffect(() => {
+        const fetchAllData = async () => {
+            if (!user || !firestore) {
+                setIsLoading(false);
+                return;
+            };
+            setIsLoading(true);
+
+            // 1. Fetch accounts
+            const fetchedAccounts: Account[] = [];
+            const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
+            accountsSnapshot.forEach(doc => {
+                fetchedAccounts.push({ id: doc.id, ...doc.data() } as Account);
+            });
+            setAccounts(fetchedAccounts);
+            
+            // 2. Fetch transactions for all accounts
+            const fetchedTransactions: Transaction[] = [];
+            for (const account of fetchedAccounts) {
+                const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
+                const transactionsQuery = query(transactionsColRef, orderBy('date', 'desc'));
+                const transactionsSnapshot = await getDocs(transactionsQuery);
+                transactionsSnapshot.forEach(doc => {
+                    fetchedTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                });
+            }
+            
+            // Sort all transactions by date after fetching
+            fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            
+            setTransactions(fetchedTransactions);
+            setIsLoading(false);
+        };
+        
         fetchAllData();
-    }, [fetchAllData]);
+    }, [user, firestore, refreshKey]);
 
     const filteredTransactions = useMemo(() => {
         let filtered = transactions ? [...transactions] : [];
@@ -122,7 +127,7 @@ export default function TransactionsPage() {
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                 <AddTransactionForm onTransactionAdded={fetchAllData}>
+                 <AddTransactionForm onTransactionAdded={handleTransactionAdded}>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Transaction
