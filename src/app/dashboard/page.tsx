@@ -9,7 +9,7 @@ import BudgetGoals from '@/components/dashboard/budget-goals';
 import AiInsights from '@/components/dashboard/ai-insights';
 import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
 
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import Link from 'next/link';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import type { Transaction, Budget, Goal, Account } from '@/lib/types';
@@ -76,19 +76,12 @@ export default function DashboardPage() {
         fetchAllData();
     }, [fetchAllData]);
 
-    const recentTransactions = useMemo(() => {
-        return transactions.slice(0, 10);
-    }, [transactions]);
-
-
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;
         const monthStart = startOfMonth(currentMonth).toISOString();
-        const monthEnd = endOfMonth(currentMonth).toISOString();
         return query(
             collection(firestore, `users/${user.uid}/budgets`),
-            where('month', '>=', monthStart),
-            where('month', '<=', monthEnd)
+            where('month', '==', monthStart),
         );
     }, [firestore, user, currentMonth]);
     
@@ -111,12 +104,12 @@ export default function DashboardPage() {
         }, {} as Record<string, number>);
         
         return savedBudgets
-            .filter(budget => budget.amount > 0)
+            .filter(budget => budget.amount && budget.amount > 0)
             .map(budget => ({
                 id: budget.id,
                 category: budget.categoryId as Transaction['category'],
-                limit: budget.amount,
-                spent: spendingByCategory[budget.categoryId] || 0,
+                limit: budget.amount || 0,
+                spent: spendingByCategory[budget.categoryId!] || 0,
                 month: budget.month
         }));
 
@@ -156,7 +149,7 @@ export default function DashboardPage() {
       </div>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4 h-auto lg:h-[440px]">
-          <RecentTransactions transactions={recentTransactions} onTransactionAdded={fetchAllData}/>
+          <RecentTransactions transactions={financialData.transactions} onTransactionAdded={fetchAllData}/>
         </Card>
         <div className="col-span-1 lg:col-span-3 space-y-4">
             <AiInsights transactions={financialData.transactions} goals={financialData.goals} />
@@ -165,3 +158,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

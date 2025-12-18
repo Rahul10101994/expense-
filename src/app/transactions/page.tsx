@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams, useRouter } from 'next/navigation';
+import ManageTransactionDialog from '@/components/transactions/manage-transaction-dialog';
 
 export default function TransactionsPage() {
     const firestore = useFirestore();
@@ -44,9 +45,9 @@ export default function TransactionsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
 
-    const handleTransactionAdded = () => {
+    const handleTransactionChange = useCallback(() => {
         setRefreshKey(oldKey => oldKey + 1);
-    };
+    }, []);
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -140,7 +141,7 @@ export default function TransactionsPage() {
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                 <AddTransactionForm onTransactionAdded={handleTransactionAdded}>
+                 <AddTransactionForm onTransactionAdded={handleTransactionChange}>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Transaction
@@ -203,8 +204,9 @@ export default function TransactionsPage() {
                             <TableHead>Description</TableHead>
                             {!accountIdFilter && <TableHead>Account</TableHead>}
                             <TableHead>Date</TableHead>
-                             <TableHead>Category</TableHead>
+                            <TableHead>Category</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -213,22 +215,29 @@ export default function TransactionsPage() {
                                 <TableCell className="font-medium">{transaction.description}</TableCell>
                                 {!accountIdFilter && <TableCell className="text-muted-foreground">{getAccountName(transaction.accountId)}</TableCell>}
                                 <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                                 <TableCell>
-                                     <div className="flex items-center gap-2">
-                                        <CategoryIcon category={transaction.category} className="h-4 w-4 text-muted-foreground"/>
-                                        <div className="flex flex-col">
-                                            <span>{transaction.category}</span>
-                                            {transaction.type === 'expense' && transaction.expenseType && (
-                                                <Badge variant={transaction.expenseType === 'need' ? 'default' : 'secondary'} className="capitalize w-fit text-xs px-1 h-4">{transaction.expenseType}</Badge>
-                                            )}
-                                        </div>
-                                     </div>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                    <CategoryIcon category={transaction.category} className="h-4 w-4 text-muted-foreground"/>
+                                    <div className="flex flex-col">
+                                        <span>{transaction.category}</span>
+                                        {transaction.type === 'expense' && transaction.expenseType && (
+                                            <Badge variant={transaction.expenseType === 'need' ? 'default' : 'secondary'} className="capitalize w-fit text-xs px-1 h-4">{transaction.expenseType}</Badge>
+                                        )}
+                                    </div>
+                                    </div>
                                 </TableCell>
                                 <TableCell className={cn(
                                     "text-right font-medium",
                                     transaction.type === 'income' ? 'text-green-500' : 'text-foreground'
                                 )}>
-                                    {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.type === 'income' ? transaction.amount : transaction.amount)}
+                                    {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.amount)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <ManageTransactionDialog 
+                                        transaction={transaction}
+                                        onTransactionUpdate={handleTransactionChange}
+                                        onTransactionDelete={handleTransactionChange}
+                                    />
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -244,3 +253,5 @@ export default function TransactionsPage() {
         </Card>
     );
 }
+
+    

@@ -32,15 +32,16 @@ export default function BudgetsPage() {
     
     useEffect(() => {
         if (!user || !firestore || accountsLoading) return;
-        if (!accounts || accounts.length === 0) {
-            setTransactions([]);
-            setTransactionsLoading(false);
-            return;
-        }
         
         const fetchTransactions = async () => {
             setTransactionsLoading(true);
             const allTransactions: Transaction[] = [];
+
+            if (!accounts || accounts.length === 0) {
+                setTransactions([]);
+                setTransactionsLoading(false);
+                return;
+            }
             
             const monthStart = startOfMonth(currentMonth).toISOString();
             const monthEnd = endOfMonth(currentMonth).toISOString();
@@ -66,16 +67,13 @@ export default function BudgetsPage() {
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;
         const monthStart = startOfMonth(currentMonth).toISOString();
-        const monthEnd = endOfMonth(currentMonth).toISOString();
         return query(
             collection(firestore, `users/${user.uid}/budgets`),
-            where('month', '>=', monthStart),
-            where('month', '<=', monthEnd)
+            where('month', '==', monthStart),
         );
     }, [firestore, user, currentMonth]);
     
     const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
-
 
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets) return [];
@@ -87,12 +85,12 @@ export default function BudgetsPage() {
         }, {} as Record<string, number>);
         
         return savedBudgets
-            .filter(budget => budget.amount > 0)
+            .filter(budget => budget.amount && budget.amount > 0)
             .map(budget => ({
                 id: budget.id,
                 category: budget.categoryId as Transaction['category'],
-                limit: budget.amount,
-                spent: spendingByCategory[budget.categoryId] || 0,
+                limit: budget.amount || 0,
+                spent: spendingByCategory[budget.categoryId!] || 0,
                 month: budget.month
         }));
 
@@ -179,3 +177,5 @@ export default function BudgetsPage() {
         </div>
     );
 }
+
+    

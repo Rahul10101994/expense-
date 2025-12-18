@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, type ReactNode } from 'react';
@@ -33,8 +34,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, addDoc, doc, writeBatch } from 'firebase/firestore';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Transaction, Category, Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -56,7 +57,7 @@ const formSchema = z.object({
     path: ['category'],
 });
 
-export default function AddTransactionForm({ children, onTransactionAdded }: { children?: ReactNode, onTransactionAdded?: () => void }) {
+export default function AddTransactionForm({ children, onTransactionAdded, transactionToEdit }: { children?: ReactNode, onTransactionAdded?: () => void, transactionToEdit?: Transaction }) {
   const [open, setOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const { user } = useUser();
@@ -71,10 +72,17 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { description: '', amount: 0, accountId: '', type: 'expense', category: '' },
+    defaultValues: transactionToEdit ? {
+        ...transactionToEdit,
+        amount: Math.abs(transactionToEdit.amount),
+        date: new Date(transactionToEdit.date),
+        type: transactionToEdit.type as 'income' | 'expense' | 'investment' | 'transfer',
+        category: transactionToEdit.category || '',
+    } : { description: '', amount: 0, accountId: '', type: 'expense', category: '' },
   });
 
   const transactionType = form.watch('type');
+  const isEditMode = !!transactionToEdit;
 
   const filteredCategories = useMemo(() => 
     categories?.filter(c => c.type === transactionType) || [], 
@@ -84,22 +92,24 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
     accounts?.filter(acc => acc.id !== form.getValues('accountId')) || [], 
   [accounts, form.watch('accountId')]);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || !accounts) return;
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user || !accounts || !firestore) return;
 
     const selectedAccount = accounts.find(acc => acc.id === values.accountId);
     if (!selectedAccount) return;
-    
+
     let category = values.category;
     if (values.type === 'income') {
         category = 'Income';
     } else if (values.type === 'transfer') {
         category = 'Transfer';
     }
+    
+    const amount = values.type === 'income' ? Math.abs(values.amount) : -Math.abs(values.amount);
 
-    const transactionData: Omit<Transaction, 'id'| 'userId'> = {
+    const transactionData: Omit<Transaction, 'id' | 'userId'> = {
       description: values.description,
-      amount: values.type === 'expense' ? -Math.abs(values.amount) : Math.abs(values.amount),
+      amount: amount,
       accountId: values.accountId,
       type: values.type,
       category,
@@ -109,30 +119,42 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
     if (values.type === 'expense' && values.expenseType) {
         transactionData.expenseType = values.expenseType;
     }
-    
-    const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${selectedAccount.id}/transactions`);
-    addDocumentNonBlocking(transactionCollectionRef, transactionData);
-    
-    if (values.type === 'transfer') {
-        const toAccount = accounts.find(acc => acc.name === values.category);
-        if(toAccount) {
-            const transferTransactionData: Omit<Transaction, 'id' | 'userId'> = {
-              accountId: toAccount.id,
-              category: 'Transfer',
-              amount: Math.abs(values.amount),
-              description: `Transfer from ${selectedAccount.name}`,
-              type: 'income', // Treat as income for the receiving account
-              date: values.date.toISOString()
-            };
-            const toTransactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${toAccount.id}/transactions`);
-            addDocumentNonBlocking(toTransactionCollectionRef, transferTransactionData);
+
+    try {
+        const batch = writeBatch(firestore);
+
+        if (isEditMode && transactionToEdit) {
+            const docRef = doc(firestore, `users/${user.uid}/accounts/${values.accountId}/transactions`, transactionToEdit.id);
+            setDocumentNonBlocking(docRef, transactionData, { merge: true });
+        } else {
+            const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${selectedAccount.id}/transactions`);
+            addDocumentNonBlocking(transactionCollectionRef, transactionData);
         }
+
+        if (values.type === 'transfer') {
+            const toAccount = accounts.find(acc => acc.name === values.category);
+            if(toAccount) {
+                const transferTransactionData: Omit<Transaction, 'id' | 'userId'> = {
+                  accountId: toAccount.id,
+                  category: 'Transfer',
+                  amount: Math.abs(values.amount),
+                  description: `Transfer from ${selectedAccount.name}`,
+                  type: 'income',
+                  date: values.date.toISOString()
+                };
+                const toTransactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${toAccount.id}/transactions`);
+                addDocumentNonBlocking(toTransactionCollectionRef, transferTransactionData);
+            }
+        }
+        
+        toast({ title: 'Success', description: `Transaction ${isEditMode ? 'updated' : 'added'}` });
+        setOpen(false);
+        form.reset({ description: '', amount: 0, accountId: '', type: 'expense', category: '' });
+        onTransactionAdded?.();
+    } catch(error) {
+        console.error("Error saving transaction: ", error)
+        toast({ title: 'Error', description: 'Could not save transaction' });
     }
-    
-    toast({ title: 'Success', description: 'Transaction added' });
-    setOpen(false);
-    form.reset({ description: '', amount: 0, accountId: '', type: 'expense', category: '' });
-    onTransactionAdded?.();
   }
   
   const handleOpenChange = (isOpen: boolean) => {
@@ -147,7 +169,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-md max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle>New Transaction</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Transaction' : 'New Transaction'}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -169,6 +191,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
                         "flex-1 px-2 py-1.5 text-xs font-medium rounded transition-all capitalize",
                         transactionType === t ? "bg-background shadow-sm" : "text-muted-foreground"
                         )}
+                        disabled={isEditMode}
                     >
                         {t}
                     </button>
@@ -321,7 +344,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
 
             {/* Sticky Action Footer */}
             <div className="p-6 pt-4 border-t bg-background">
-                <Button type="submit" className="w-full h-11">Save Transaction</Button>
+                <Button type="submit" className="w-full h-11">{isEditMode ? 'Save Changes' : 'Save Transaction'}</Button>
             </div>
           </form>
         </Form>
@@ -329,3 +352,5 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
     </Dialog>
   );
 }
+
+    
