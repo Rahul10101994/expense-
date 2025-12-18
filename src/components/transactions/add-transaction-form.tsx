@@ -479,7 +479,3 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     </Dialog>
   );
 }
-
-    
-
-    
