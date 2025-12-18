@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -36,8 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, addDoc } from 'firebase/firestore';
 import type { Transaction, Category, Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -45,362 +42,229 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const formSchema = z.object({
-  description: z.string().min(1, 'Description is required.'),
-  amount: z.coerce.number().refine(val => val !== 0, 'Amount cannot be zero.'),
-  accountId: z.string().min(1, 'Please select an account.'),
+  description: z.string().min(1, 'Required'),
+  amount: z.coerce.number().refine(val => val !== 0, 'Required'),
+  accountId: z.string().min(1, 'Required'),
   type: z.enum(['income', 'expense', 'investment', 'transfer']),
-  category: z.string().min(1, 'Please select a category.'),
-  date: z.date({
-    required_error: "A date is required.",
-  }),
+  category: z.string().min(1, 'Required'),
+  date: z.date({ required_error: "Required" }),
   expenseType: z.enum(['need', 'want']).optional(),
-}).refine(data => {
-    if (data.type === 'expense') {
-        return !!data.expenseType;
-    }
-    return true;
-}, {
-    message: 'Please classify the expense as a need or a want.',
-    path: ['expenseType'],
-}).refine(data => data.type !== 'transfer' || data.category, {
-    message: 'Category is required.',
-    path: ['category'],
+}).refine(data => data.type !== 'expense' || !!data.expenseType, {
+  message: 'Classify expense',
+  path: ['expenseType'],
 });
 
-type AddTransactionFormProps = {
-  transaction?: Transaction;
-  children?: ReactNode;
-  onTransactionAdded?: () => void;
-};
-
-export default function AddTransactionForm({ transaction, children, onTransactionAdded }: AddTransactionFormProps) {
+export default function AddTransactionForm({ children, onTransactionAdded }: { children?: ReactNode, onTransactionAdded?: () => void }) {
   const [open, setOpen] = useState(false);
-  const firestore = useFirestore();
-  const { user } = useUser();
-  const { toast } = useToast();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
 
-
-  const accountsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, `users/${user.uid}/accounts`);
-  }, [firestore, user]);
+  const accountsQuery = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/accounts`) : null, [firestore, user]);
   const { data: accounts } = useCollection<Account>(accountsQuery);
 
-  const categoriesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, `users/${user.uid}/categories`);
-  }, [firestore, user]);
+  const categoriesQuery = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/categories`) : null, [firestore, user]);
   const { data: categories } = useCollection<Category>(categoriesQuery);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      description: '',
-      amount: 0,
-      accountId: '',
-      type: 'expense',
-      category: '',
-      date: undefined,
-    },
+    defaultValues: { description: '', amount: 0, accountId: '', type: 'expense', category: '' },
   });
 
   const transactionType = form.watch('type');
-  
-  const setTransactionType = (type: 'income' | 'expense' | 'transfer' | 'investment') => {
-    form.setValue('type', type);
-    form.setValue('category', '');
-    if (type !== 'expense') {
-      form.clearErrors('expenseType');
-      form.setValue('expenseType', undefined);
+
+  const filteredCategories = useMemo(() => 
+    categories?.filter(c => c.type === transactionType) || [], 
+  [categories, transactionType]);
+
+  const transferAccounts = useMemo(() => 
+    accounts?.filter(acc => acc.id !== form.getValues('accountId')) || [], 
+  [accounts, form.watch('accountId')]);
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user || !accounts) return;
+
+    const selectedAccount = accounts.find(acc => acc.id === values.accountId);
+    if (!selectedAccount) return;
+
+    const transactionData: Omit<Transaction, 'id'| 'userId'> = {
+      ...values,
+      amount: values.type === 'expense' ? -Math.abs(values.amount) : Math.abs(values.amount),
+      date: values.date.toISOString(),
+    };
+    
+    try {
+        await addDoc(collection(firestore, `users/${user.uid}/accounts/${selectedAccount.id}/transactions`), transactionData);
+
+        toast({ title: 'Success', description: 'Transaction added' });
+        setOpen(false);
+        form.reset({ description: '', amount: 0, accountId: '', type: 'expense', category: '' });
+        onTransactionAdded?.();
+    } catch (error) {
+        console.error("Error adding transaction: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not add transaction.',
+        });
     }
   }
-
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || !firestore) return;
-
-    let transactionData;
-
-    if (values.type === 'transfer') {
-        // For transfers, create two transactions
-        const transferAmount = Math.abs(values.amount);
-        
-        // Outgoing transaction
-        const outgoingTx = {
-            description: `Transfer to ${values.category}`, // Here category is the target account name
-            amount: -transferAmount,
-            accountId: values.accountId,
-            type: 'transfer' as const,
-            category: 'Transfer',
-            date: values.date.toISOString(),
-            userId: user.uid,
-        };
-        const transactionsColOutgoing = collection(firestore, `users/${user.uid}/accounts/${values.accountId}/transactions`);
-        addDocumentNonBlocking(transactionsColOutgoing, outgoingTx);
-
-        // Incoming transaction
-        const targetAccount = accounts?.find(acc => acc.name === values.category);
-        if (targetAccount) {
-            const incomingTx = {
-                description: `Transfer from ${accounts?.find(acc => acc.id === values.accountId)?.name}`,
-                amount: transferAmount,
-                accountId: targetAccount.id,
-                type: 'transfer' as const,
-                category: 'Transfer',
-                date: values.date.toISOString(),
-                userId: user.uid,
-            };
-            const transactionsColIncoming = collection(firestore, `users/${user.uid}/accounts/${targetAccount.id}/transactions`);
-            addDocumentNonBlocking(transactionsColIncoming, incomingTx);
-        }
-    } else {
-        transactionData = {
-          ...values,
-          amount: values.type === 'expense' ? -Math.abs(values.amount) : Math.abs(values.amount),
-          date: values.date.toISOString(),
-          userId: user.uid,
-        };
-        const transactionsCol = collection(firestore, `users/${user.uid}/accounts/${values.accountId}/transactions`);
-        addDocumentNonBlocking(transactionsCol, transactionData);
-    }
-    
-
-    toast({
-        title: 'Transaction Added',
-        description: `Your transaction has been successfully added.`,
-    });
-    
-    setOpen(false);
-    onTransactionAdded?.();
-  }
-
-  const filteredCategories = useMemo(() => {
-    if (!categories) return [];
-    if (transactionType === 'transfer') return [];
-    return categories.filter(c => c.type === transactionType);
-  }, [categories, transactionType]);
-
-  const transferAccounts = useMemo(() => {
-    if (!accounts || !form.getValues('accountId')) return [];
-    return accounts.filter(acc => acc.id !== form.getValues('accountId'));
-  }, [accounts, form.watch('accountId')]);
-  
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
-      form.reset({
-        description: '',
-        amount: 0,
-        accountId: accounts?.[0]?.id || '',
-        type: 'expense',
-        category: '',
-        date: undefined,
-      });
-    }
-    setOpen(isOpen);
-  };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) {
+            form.reset({ description: '', amount: 0, accountId: '', type: 'expense', category: '' });
+        }
+    }}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-sm grid-rows-[auto,1fr,auto] max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>Add Transaction</DialogTitle>
-          <DialogDescription>
-            Enter the details of your transaction below.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[400px] p-4 gap-4 overflow-hidden">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-lg">New Transaction</DialogTitle>
         </DialogHeader>
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
-            <div className="grid grid-cols-3 gap-2 mb-4">
-                <Button type="button" variant={transactionType === 'income' ? 'default' : 'outline'} onClick={() => setTransactionType('income')}>Income</Button>
-                <Button type="button" variant={transactionType === 'expense' ? 'default' : 'outline'} onClick={() => setTransactionType('expense')}>Expense</Button>
-                <Button type="button" variant={transactionType === 'transfer' ? 'default' : 'outline'} onClick={() => setTransactionType('transfer')}>Transfer</Button>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+             <div className="flex p-1 bg-muted rounded-md">
+              {['expense', 'income', 'transfer'].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    form.setValue('type', t as any);
+                    form.setValue('category', '');
+                  }}
+                  className={cn(
+                    "flex-1 px-2 py-1.5 text-xs font-medium rounded transition-all capitalize",
+                    transactionType === t ? "bg-background shadow-sm" : "text-muted-foreground"
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
             </div>
-             <ScrollArea className="pr-6 -mr-6">
-                <div className="space-y-3">
-                    <FormField
+
+            <ScrollArea className="h-[60vh] md:h-auto md:max-h-[60vh] pr-4">
+              <div className="space-y-3">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   <FormField
                     control={form.control}
                     name="description"
                     render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Groceries" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
+                      <FormItem>
+                        <FormLabel className="text-xs">Description</FormLabel>
+                        <FormControl><Input placeholder="e.g. Coffee, Rent" className="h-9" {...field} /></FormControl>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
                     )}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <FormField
-                        control={form.control}
-                        name="amount"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Amount</FormLabel>
+                  />
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel className="text-xs mt-0.5">Date</FormLabel>
+                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                          <PopoverTrigger asChild>
                             <FormControl>
-                                <Input type="number" placeholder="0.00" {...field} />
+                              <Button variant="outline" className={cn("h-9 px-2 text-left font-normal text-xs", !field.value && "text-muted-foreground")}>
+                                {field.value ? format(field.value, "MMM d, yyyy") : <span>Pick a date</span>}
+                                <CalendarIcon className="ml-auto h-3 w-3 opacity-50" />
+                              </Button>
                             </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="date"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                            <FormLabel>Date</FormLabel>
-                            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
-                                <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button
-                                    variant={"outline"}
-                                    type="button"
-                                    className={cn(
-                                        "w-full pl-3 text-left font-normal h-10",
-                                        !field.value && "text-muted-foreground"
-                                    )}
-                                    >
-                                    {field.value ? (
-                                        format(field.value, "PPP")
-                                    ) : (
-                                        <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent 
-                                className="w-auto p-0" 
-                                align="start"
-                                onOpenAutoFocus={(e) => e.preventDefault()}
-                                onPointerDownOutside={(e) => e.preventDefault()}
-                                >
-                                <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={(date) => {
-                                    field.onChange(date);
-                                    setIsCalendarOpen(false);
-                                    }}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </div>
-                    <FormField
-                        control={form.control}
-                        name="accountId"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{transactionType === 'transfer' ? 'From Account' : 'Account'}</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select an account" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {accounts?.map(account => (
-                                    <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    
-                    {transactionType === 'transfer' ? (
-                        <FormField
-                            control={form.control}
-                            name="category" // Re-using category field for target account
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>To Account</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger disabled={transferAccounts.length === 0}>
-                                        <SelectValue placeholder="Select target account" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {transferAccounts.map(acc => (
-                                        <SelectItem key={acc.id} value={acc.name}>{acc.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    ) : (
-                         <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Category</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger disabled={!transactionType || filteredCategories.length === 0}>
-                                        <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {filteredCategories.map(cat => (
-                                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="end">
+                            <Calendar mode="single" selected={field.value} onSelect={(d) => { if(d) field.onChange(d); setIsCalendarOpen(false); }} initialFocus />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
                     )}
-
-                    {transactionType === 'expense' && (
-                    <FormField
-                        control={form.control}
-                        name="expenseType"
-                        render={({ field }) => (
-                        <FormItem className="space-y-2">
-                            <FormLabel>Is this a need or a want?</FormLabel>
-                            <FormControl>
-                            <RadioGroup
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                                className="flex items-center space-x-4"
-                            >
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                <FormControl>
-                                    <RadioGroupItem value="need" />
-                                </FormControl>
-                                <FormLabel className="font-normal">Need</FormLabel>
-                                </FormItem>
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                <FormControl>
-                                    <RadioGroupItem value="want" />
-                                </FormControl>
-                                <FormLabel className="font-normal">Want</FormLabel>
-                                </FormItem>
-                            </RadioGroup>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    )}
+                  />
                 </div>
+                
+                 <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Amount</FormLabel>
+                        <FormControl><Input type="number" step="0.01" className="h-9" {...field} /></FormControl>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )}
+                  />
+
+                <FormField
+                  control={form.control}
+                  name="accountId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">{transactionType === 'transfer' ? 'From' : 'Account'}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
+                        <SelectContent>{accounts?.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+
+                {transactionType === 'transfer' ? (
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">To Account</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Target Account" /></SelectTrigger></FormControl>
+                          <SelectContent>{transferAccounts.map(acc => <SelectItem key={acc.id} value={acc.name}>{acc.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                         <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Category</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
+                          <SelectContent>{filteredCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                         <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {transactionType === 'expense' && (
+                  <FormField
+                    control={form.control}
+                    name="expenseType"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-xs">Classification</FormLabel>
+                        <FormControl>
+                          <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="need" id="need" /><label htmlFor="need" className="text-xs">Need</label></div>
+                            <div className="flex items-center space-x-1"><RadioGroupItem value="want" id="want" /><label htmlFor="want" className="text-xs">Want</label></div>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
             </ScrollArea>
-            <DialogFooter className="pt-4 mt-auto">
-              <Button type="submit">Add Transaction</Button>
-            </DialogFooter>
+
+            <Button type="submit" className="w-full h-10 mt-2">Save Transaction</Button>
           </form>
         </Form>
       </DialogContent>
@@ -408,6 +272,5 @@ export default function AddTransactionForm({ transaction, children, onTransactio
   );
 }
 
-    
 
     
