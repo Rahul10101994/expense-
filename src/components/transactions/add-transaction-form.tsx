@@ -149,7 +149,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-md grid-rows-[auto,1fr,auto] max-h-[90vh]">
+      <DialogContent className="sm:max-w-sm grid-rows-[auto,1fr,auto] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Add Transaction</DialogTitle>
           <DialogDescription>
@@ -348,3 +348,5 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     </Dialog>
   );
 }
+
+    
