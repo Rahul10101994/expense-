@@ -93,7 +93,7 @@ export default function SettingsPage() {
     const handleDownload = () => {
         if (!filteredTransactions) return;
 
-        const headers = ["Date", "Type", "Amount", "Category", "Description"];
+        const headers = ["Date", "Type", "Amount", "Category", "Description", "Need/Want"];
         const csvRows = [headers.join(",")];
 
         for (const transaction of filteredTransactions) {
@@ -103,6 +103,7 @@ export default function SettingsPage() {
                 transaction.amount,
                 transaction.category,
                 `"${transaction.description.replace(/"/g, '""')}"`,
+                transaction.expenseType || '',
             ];
             csvRows.push(values.join(","));
         }
