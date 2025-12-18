@@ -40,15 +40,28 @@ export default function TransactionsPage() {
     }, [firestore, user]);
     const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
 
-    const transactionsQuery = useMemoFirebase(() => {
-        if (!user || !accounts || accounts.length === 0) return null;
-        // This is a simplification to get real-time updates.
-        // For a full app, you'd need a more complex solution to query across all accounts.
-        const mostRecentAccount = accounts[0];
-        return collection(firestore, `users/${user.uid}/accounts/${mostRecentAccount.id}/transactions`);
-    }, [firestore, user, accounts]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactionsLoading, setTransactionsLoading] = useState(true);
 
-    const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
+    const fetchTransactions = async () => {
+        if (!user || !firestore || !accounts) return;
+        setTransactionsLoading(true);
+        const allTransactions: Transaction[] = [];
+        for (const account of accounts) {
+            const transactionsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`));
+            transactionsSnapshot.forEach(doc => {
+                allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+            });
+        }
+        setTransactions(allTransactions);
+        setTransactionsLoading(false);
+    };
+
+    useEffect(() => {
+        if (accounts) {
+            fetchTransactions();
+        }
+    }, [accounts]);
 
     const filteredTransactions = useMemo(() => {
         let filtered = transactions ? [...transactions] : [];
@@ -99,7 +112,7 @@ export default function TransactionsPage() {
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                 <AddTransactionForm>
+                 <AddTransactionForm onTransactionAdded={fetchTransactions}>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Transaction

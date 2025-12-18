@@ -45,11 +45,14 @@ export default function DashboardPage() {
             const transactions: Transaction[] = [];
             for (const account of accounts) {
                 const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
-                const transactionsSnapshot = await getDocs(transactionsColRef);
+                const transactionsQuery = query(transactionsColRef, orderBy('date', 'desc'));
+                const transactionsSnapshot = await getDocs(transactionsQuery);
                 transactionsSnapshot.forEach(doc => {
                     transactions.push({ id: doc.id, ...doc.data() } as Transaction);
                 });
             }
+            // Sort all transactions by date after fetching them
+            transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setAllTransactions(transactions);
             setAllTransactionsLoading(false);
         };
@@ -57,19 +60,9 @@ export default function DashboardPage() {
         fetchAllTransactions();
     }, [user, firestore, accounts, accountsLoading]);
 
-    const recentTransactionsQuery = useMemoFirebase(() => {
-        if (!user || !accounts || accounts.length === 0) return null;
-        // This is a simplification to get real-time updates. 
-        // For a full app, you'd need a more complex solution to query across all accounts.
-        const mostRecentAccount = accounts[0];
-        return query(
-            collection(firestore, `users/${user.uid}/accounts/${mostRecentAccount.id}/transactions`),
-            orderBy('date', 'desc'),
-            limit(10)
-        );
-    }, [firestore, user, accounts]);
-
-    const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(recentTransactionsQuery);
+    const recentTransactions = useMemo(() => {
+        return allTransactions.slice(0, 10);
+    }, [allTransactions]);
 
 
     const budgetsQuery = useMemoFirebase(() => {
@@ -114,7 +107,7 @@ export default function DashboardPage() {
     }, [savedBudgets, allTransactions]);
     
 
-    if (transactionsLoading || accountsLoading || budgetsLoading || goalsLoading || allTransactionsLoading) {
+    if (accountsLoading || budgetsLoading || goalsLoading || allTransactionsLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Spinner size="large" />
@@ -128,8 +121,6 @@ export default function DashboardPage() {
         budgets,
         goals: goals || [],
     };
-
-    const recentTransactionsData = transactions || [];
 
   return (
     <div className="flex-1 space-y-4">
@@ -149,7 +140,7 @@ export default function DashboardPage() {
       </div>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4 h-auto lg:h-[440px]">
-          <RecentTransactions transactions={recentTransactionsData} />
+          <RecentTransactions transactions={recentTransactions} />
         </Card>
         <div className="col-span-1 lg:col-span-3 space-y-4">
             <AiInsights transactions={financialData.transactions} goals={financialData.goals} />
