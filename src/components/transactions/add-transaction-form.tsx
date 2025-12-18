@@ -106,25 +106,28 @@ export default function AddTransactionForm({ transaction, children, onTransactio
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
-
-  useEffect(() => {
-    if (transaction) {
-      form.reset({
-        ...transaction,
-        date: new Date(transaction.date),
-        amount: Math.abs(transaction.amount),
-        // @ts-ignore
-        accountId: transaction.accountId,
-      });
-    } else {
-      form.reset({
-        type: TransactionType.Expense,
-        description: '',
-        amount: 0,
-        date: new Date(),
-      });
+  
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+        if (transaction) {
+          form.reset({
+            ...transaction,
+            date: new Date(transaction.date),
+            amount: Math.abs(transaction.amount),
+            // @ts-ignore
+            accountId: transaction.accountId,
+          });
+        } else {
+          form.reset({
+            type: TransactionType.Expense,
+            description: '',
+            amount: 0,
+            date: new Date(),
+          });
+        }
     }
-  }, [transaction, form, open]);
+  }
 
 
   const transactionType = form.watch('type');
@@ -217,13 +220,6 @@ export default function AddTransactionForm({ transaction, children, onTransactio
           title: 'Error',
           description: 'Failed to save transaction. Please try again.',
       });
-    }
-  }
-  
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (!isOpen) {
-        form.reset();
     }
   }
 
@@ -483,3 +479,5 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     </Dialog>
   );
 }
+
+    
