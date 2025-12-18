@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, type ReactNode, useEffect } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -35,7 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Transaction, Category, Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -70,10 +71,11 @@ type AddTransactionFormProps = {
 
 export default function AddTransactionForm({ transaction, children, onTransactionAdded }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
 
   const accountsQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -121,7 +123,6 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     
     setOpen(false);
     onTransactionAdded?.();
-    form.reset();
   }
 
   const filteredCategories = useMemo(() => {
@@ -129,41 +130,33 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     if (transactionType === 'transfer') return [];
     return categories.filter(c => c.type === transactionType);
   }, [categories, transactionType]);
-
+  
   const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
     if (isOpen) {
-      form.reset(
-        transaction
-          ? {
-              ...transaction,
-              date: new Date(transaction.date),
-              amount: Math.abs(transaction.amount),
-            }
-          : {
-              description: '',
-              amount: 0,
-              accountId: accounts?.[0]?.id || '',
-              type: 'expense',
-              category: '',
-              date: undefined,
-            }
-      );
+      form.reset({
+        description: '',
+        amount: 0,
+        accountId: accounts?.[0]?.id || '',
+        type: 'expense',
+        category: '',
+        date: undefined,
+      });
     }
+    setOpen(isOpen);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{transaction ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
+          <DialogTitle>Add Transaction</DialogTitle>
           <DialogDescription>
             Enter the details of your transaction below.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
              <FormField
               control={form.control}
               name="description"
@@ -177,7 +170,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
                 <FormField
                 control={form.control}
                 name="amount"
@@ -191,20 +184,20 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                     </FormItem>
                 )}
                 />
-                <FormField
+                 <FormField
                   control={form.control}
                   name="date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Date</FormLabel>
-                      <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                      <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
                               variant={"outline"}
                               type="button"
                               className={cn(
-                                "w-full pl-3 text-left font-normal",
+                                "w-full pl-3 text-left font-normal h-10",
                                 !field.value && "text-muted-foreground"
                               )}
                             >
@@ -217,7 +210,12 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent 
+                          className="w-auto p-0" 
+                          align="start"
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                          onPointerDownOutside={(e) => e.preventDefault()}
+                        >
                           <Calendar
                             mode="single"
                             selected={field.value}
@@ -234,7 +232,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                   )}
                 />
             </div>
-             <FormField
+            <FormField
               control={form.control}
               name="accountId"
               render={({ field }) => (
@@ -256,6 +254,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-3">
              <FormField
               control={form.control}
               name="type"
@@ -302,12 +301,13 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                     )}
                 />
             )}
+            </div>
              {transactionType === 'expense' && (
               <FormField
                 control={form.control}
                 name="expenseType"
                 render={({ field }) => (
-                  <FormItem className="space-y-3">
+                  <FormItem className="space-y-2">
                     <FormLabel>Is this a need or a want?</FormLabel>
                     <FormControl>
                       <RadioGroup
@@ -334,7 +334,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                 )}
               />
             )}
-            <DialogFooter>
+            <DialogFooter className="pt-4">
               <Button type="submit">Add Transaction</Button>
             </DialogFooter>
           </form>
