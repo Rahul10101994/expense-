@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, type ReactNode } from 'react';
@@ -39,7 +38,6 @@ import type { Transaction, Category, Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Required'),
@@ -131,155 +129,184 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[400px] p-4 gap-0 flex flex-col">
-        <DialogHeader className="pb-2">
-          <DialogTitle className="text-lg">New Transaction</DialogTitle>
+      <DialogContent className="sm:max-w-[425px] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-2">
+          <DialogTitle>New Transaction</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
-            <div className="flex p-1 bg-muted rounded-md mb-4">
-              {['expense', 'income', 'transfer'].map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => {
-                    form.setValue('type', t as any);
-                    form.setValue('category', '');
-                  }}
-                  className={cn(
-                    "flex-1 px-2 py-1.5 text-xs font-medium rounded transition-all capitalize",
-                    transactionType === t ? "bg-background shadow-sm" : "text-muted-foreground"
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+            {/* Main scrollable area */}
+            <div className="flex-1 overflow-y-auto px-6 py-2">
+              <div className="space-y-4 pb-4">
+                {/* Type Switcher */}
+                <div className="flex p-1 bg-muted rounded-md w-full">
+                    {['expense', 'income', 'transfer'].map((t) => (
+                    <button
+                        key={t}
+                        type="button"
+                        onClick={() => {
+                        form.setValue('type', t as any);
+                        form.setValue('category', '');
+                        }}
+                        className={cn(
+                        "flex-1 px-2 py-1.5 text-xs font-medium rounded transition-all capitalize",
+                        transactionType === t ? "bg-background shadow-sm" : "text-muted-foreground"
+                        )}
+                    >
+                        {t}
+                    </button>
+                    ))}
+                </div>
 
-            <ScrollArea className="pr-4 -mr-4">
-              <div className="space-y-3">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                   <FormField
+                <div className="grid grid-cols-1 gap-4">
+                  <FormField
                     control={form.control}
                     name="description"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs">Description</FormLabel>
-                        <FormControl><Input placeholder="e.g. Coffee, Rent" className="h-9" {...field} /></FormControl>
+                        <FormControl><Input placeholder="e.g. Coffee" className="h-10" {...field} /></FormControl>
                         <FormMessage className="text-[10px]" />
                       </FormItem>
                     )}
                   />
+
                   <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel className="text-xs mt-0.5">Date</FormLabel>
-                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button variant="outline" className={cn("h-9 px-2 text-left font-normal text-xs", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(field.value, "MMM d, yyyy") : <span>Pick a date</span>}
-                                <CalendarIcon className="ml-auto h-3 w-3 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="end">
-                            <Calendar mode="single" selected={field.value} onSelect={(d) => { if(d) field.onChange(d); setIsCalendarOpen(false); }} initialFocus />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage className="text-[10px]" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                 <FormField
                     control={form.control}
                     name="amount"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs">Amount</FormLabel>
-                        <FormControl><Input type="number" step="0.01" className="h-9" {...field} /></FormControl>
+                        <FormControl><Input type="number" step="0.01" className="h-10" {...field} /></FormControl>
                         <FormMessage className="text-[10px]" />
                       </FormItem>
                     )}
                   />
 
-                <FormField
-                  control={form.control}
-                  name="accountId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">{transactionType === 'transfer' ? 'From' : 'Account'}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
-                        <SelectContent>{accounts?.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>)}</SelectContent>
-                      </Select>
-                      <FormMessage className="text-[10px]" />
-                    </FormItem>
+<FormField
+  control={form.control}
+  name="date"
+  render={({ field }) => (
+    <FormItem className="flex flex-col">
+      <FormLabel className="text-xs">Date</FormLabel>
+      <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
+        <PopoverTrigger asChild>
+          <FormControl>
+            <Button
+              variant="outline"
+              type="button"
+              className={cn(
+                "h-10 px-3 text-left font-normal text-sm w-full",
+                !field.value && "text-muted-foreground"
+              )}
+            >
+              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </FormControl>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-auto p-0" 
+          align="start" 
+          // This prevents the dialog from stealing focus back too early
+          onCloseAutoFocus={(e) => e.preventDefault()} 
+        >
+          <Calendar
+            mode="single"
+            selected={field.value}
+            onSelect={(date) => {
+              if (date) {
+                field.onChange(date);
+                setIsCalendarOpen(false);
+              }
+            }}
+            disabled={(date) =>
+              date > new Date() || date < new Date("1900-01-01")
+            }
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+      <FormMessage className="text-[10px]" />
+    </FormItem>
+  )}
+/>
+
+                  <FormField
+                    control={form.control}
+                    name="accountId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">{transactionType === 'transfer' ? 'From' : 'Account'}</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger className="h-10"><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
+                          <SelectContent>{accounts?.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <FormMessage className="text-[10px]" />
+                      </FormItem>
+                    )}
+                  />
+
+                  {transactionType === 'transfer' && (
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">To Account</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger className="h-10"><SelectValue placeholder="Target Account" /></SelectTrigger></FormControl>
+                            <SelectContent>{transferAccounts.map(acc => <SelectItem key={acc.id} value={acc.name}>{acc.name}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <FormMessage className="text-[10px]" />
+                        </FormItem>
+                      )}
+                    />
                   )}
-                />
+                  
+                  {(transactionType === 'expense' || transactionType === 'investment') && (
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Category</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger className="h-10"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
+                            <SelectContent>{filteredCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <FormMessage className="text-[10px]" />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
-                {transactionType === 'transfer' && (
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">To Account</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Target Account" /></SelectTrigger></FormControl>
-                          <SelectContent>{transferAccounts.map(acc => <SelectItem key={acc.id} value={acc.name}>{acc.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                         <FormMessage className="text-[10px]" />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                
-                {(transactionType === 'expense' || transactionType === 'investment') && (
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs">Category</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
-                          <SelectContent>{filteredCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                         <FormMessage className="text-[10px]" />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {transactionType === 'expense' && (
-                  <FormField
-                    control={form.control}
-                    name="expenseType"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1">
-                        <FormLabel className="text-xs">Classification</FormLabel>
-                        <FormControl>
-                          <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
-                            <div className="flex items-center space-x-1"><RadioGroupItem value="need" id="need" /><label htmlFor="need" className="text-xs">Need</label></div>
-                            <div className="flex items-center space-x-1"><RadioGroupItem value="want" id="want" /><label htmlFor="want" className="text-xs">Want</label></div>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage className="text-[10px]" />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                  {transactionType === 'expense' && (
+                    <FormField
+                      control={form.control}
+                      name="expenseType"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-xs">Classification</FormLabel>
+                          <FormControl>
+                            <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
+                              <div className="flex items-center space-x-2"><RadioGroupItem value="need" id="need" /><label htmlFor="need" className="text-sm">Need</label></div>
+                              <div className="flex items-center space-x-2"><RadioGroupItem value="want" id="want" /><label htmlFor="want" className="text-sm">Want</label></div>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage className="text-[10px]" />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
               </div>
-            </ScrollArea>
+            </div>
 
-            <div className="pt-4 mt-auto">
-                <Button type="submit" className="w-full h-10">Save Transaction</Button>
+            {/* Sticky Action Footer */}
+            <div className="p-6 pt-4 border-t bg-background">
+                <Button type="submit" className="w-full h-11">Save Transaction</Button>
             </div>
           </form>
         </Form>

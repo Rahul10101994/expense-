@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import IncomeExpenseChart from '@/components/dashboard/income-expense-chart';
 import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import type { Transaction, Budget, TransactionCategory } from '@/lib/types';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import type { Transaction, Budget, TransactionCategory, Account } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
-import { isSameMonth, isSameYear, startOfMonth, endOfMonth, getYear, getMonth, format } from 'date-fns';
+import { useMemo, useState, useEffect } from 'react';
+import { startOfMonth, endOfMonth, getYear, getMonth, format } from 'date-fns';
 import { ArrowDown, ArrowUp, PiggyBank, Download, ArrowLeft } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Progress } from '@/components/ui/progress';
@@ -32,6 +32,15 @@ export default function ReportsPage() {
     const [selectedYear, setSelectedYear] = useState<number>(searchParams.get('year') ? parseInt(searchParams.get('year')!) : getYear(new Date()));
     const [selectedMonth, setSelectedMonth] = useState<number>(searchParams.get('month') ? parseInt(searchParams.get('month')!) : getMonth(new Date()));
     
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactionsLoading, setTransactionsLoading] = useState(true);
+
+    const accountsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, `users/${user.uid}/accounts`);
+    }, [firestore, user]);
+    const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
+
     const handleFilterChange = (type: 'period' | 'year' | 'month', value: string) => {
         const params = new URLSearchParams(searchParams);
         if (type === 'period') {
@@ -64,35 +73,66 @@ export default function ReportsPage() {
         router.push(`/settings/reports?${params.toString()}`);
     };
 
-    const transactionsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, `users/${user.uid}/accounts/default/transactions`);
-    }, [firestore, user]);
-
-    const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);
-
-    const filteredTransactions = useMemo(() => {
-        if (!transactions) return [];
+    const { startDate, endDate } = useMemo(() => {
         const now = new Date();
+        let start, end;
         if (period === 'currentMonth') {
-            return transactions.filter(t => isSameMonth(new Date(t.date), now));
+            start = startOfMonth(now);
+            end = endOfMonth(now);
+        } else if (period === 'currentYear') {
+            start = new Date(getYear(now), 0, 1);
+            end = new Date(getYear(now), 11, 31, 23, 59, 59);
+        } else if (period === 'custom') {
+            start = startOfMonth(new Date(selectedYear, selectedMonth));
+            end = endOfMonth(new Date(selectedYear, selectedMonth));
+        } else { // 'overall'
+            start = null; // No start date for overall
+            end = null; // No end date for overall
         }
-        if (period === 'currentYear') {
-            return transactions.filter(t => isSameYear(new Date(t.date), now));
+        return { startDate: start, endDate: end };
+    }, [period, selectedYear, selectedMonth]);
+
+     useEffect(() => {
+        if (!user || !firestore || accountsLoading) return;
+        if (!accounts) {
+            setTransactions([]);
+            setTransactionsLoading(false);
+            return;
         }
-        if (period === 'custom') {
-            return transactions.filter(t => {
-                const date = new Date(t.date);
-                return getYear(date) === selectedYear && getMonth(date) === selectedMonth;
-            });
-        }
-        return transactions;
-    }, [transactions, period, selectedYear, selectedMonth]);
+
+        const fetchTransactions = async () => {
+            setTransactionsLoading(true);
+            const allTransactions: Transaction[] = [];
+
+            for (const account of accounts) {
+                let transactionsQuery;
+                if (startDate && endDate) {
+                    transactionsQuery = query(
+                        collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`),
+                        where('date', '>=', startDate.toISOString()),
+                        where('date', '<=', endDate.toISOString())
+                    );
+                } else {
+                    // overall, so no date filter
+                    transactionsQuery = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
+                }
+                
+                const transactionsSnapshot = await getDocs(transactionsQuery);
+                transactionsSnapshot.forEach(doc => {
+                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                });
+            }
+            setTransactions(allTransactions);
+            setTransactionsLoading(false);
+        };
+
+        fetchTransactions();
+    }, [user, firestore, accounts, accountsLoading, startDate, endDate]);
 
     const { income, expenses, savings } = useMemo(() => {
         let income = 0;
         let expenses = 0;
-        filteredTransactions.forEach(t => {
+        transactions.forEach(t => {
             if (t.type === 'income') {
                 income += t.amount;
             } else if (t.type === 'expense') {
@@ -101,37 +141,39 @@ export default function ReportsPage() {
         });
         const savings = income - expenses;
         return { income, expenses, savings };
-    }, [filteredTransactions]);
+    }, [transactions]);
+
+    const budgetsQuery = useMemoFirebase(() => {
+        if (!user || !startDate || !endDate) return null;
+        return query(
+            collection(firestore, `users/${user.uid}/budgets`),
+            where('month', '>=', startDate.toISOString()),
+            where('month', '<=', endDate.toISOString())
+        );
+    }, [firestore, user, startDate, endDate]);
+    
+    const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
     
     const budgets: Budget[] = useMemo(() => {
-        if (!filteredTransactions) return [];
+        if (!savedBudgets || !transactions) return [];
 
-        const spendingByCategory = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
         }, {} as Record<string, number>);
-
-        // Placeholder for budget limits - in a real app, this would come from Firestore
-        const budgetLimits: Record<string, number> = {
-            'Food': 500,
-            'Shopping': 300,
-            'Transportation': 150,
-            'Entertainment': 100,
-            'Health': 100,
-            'Other': 100,
-            'Housing': 1500,
-            'Utilities': 100,
-        };
-
-        return Object.keys(budgetLimits).map(category => ({
-            id: category,
-            category: category as TransactionCategory,
-            limit: budgetLimits[category],
-            spent: spendingByCategory[category] || 0,
-            month: new Date().toISOString()
+        
+        return savedBudgets
+            .filter(budget => budget.amount && budget.amount > 0)
+            .map(budget => ({
+                id: budget.id,
+                category: budget.categoryId as Transaction['category'],
+                limit: budget.amount || 0,
+                spent: spendingByCategory[budget.categoryId!] || 0,
+                month: budget.month
         }));
-    }, [filteredTransactions]);
+
+    }, [savedBudgets, transactions]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -151,7 +193,7 @@ export default function ReportsPage() {
     const yearOptions = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i);
     const monthOptions = Array.from({ length: 12 }, (_, i) => ({ value: i, label: format(new Date(2000, i), 'MMMM') }));
 
-    if (isLoading) {
+    if (transactionsLoading || accountsLoading || budgetsLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Spinner size="large" />
@@ -240,14 +282,14 @@ export default function ReportsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
                <Card className="lg:col-span-5">
-                    <IncomeExpenseChart transactions={filteredTransactions} />
+                    <IncomeExpenseChart transactions={transactions} />
                 </Card>
                  <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
                     <Card>
-                        <SpendingBreakdownChart transactions={filteredTransactions} />
+                        <SpendingBreakdownChart transactions={transactions} />
                     </Card>
                      <Card>
-                        <NeedsWantsChart transactions={filteredTransactions} />
+                        <NeedsWantsChart transactions={transactions} />
                     </Card>
                 </div>
             </div>
@@ -264,7 +306,7 @@ export default function ReportsPage() {
                     const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
                     const remaining = budget.limit - budget.spent;
                     return (
-                        <Card key={budget.category}>
+                        <Card key={budget.id}>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 pt-1">
                                 <CardTitle className="text-xs font-medium flex items-center gap-2">
                                     <CategoryIcon category={budget.category} className="h-3 w-3 text-muted-foreground" />
@@ -288,3 +330,5 @@ export default function ReportsPage() {
         </div>
     );
 }
+
+    
