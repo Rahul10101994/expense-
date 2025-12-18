@@ -52,7 +52,14 @@ export default function DashboardPage() {
         
         fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
-        setAccounts(fetchedAccounts);
+        // Recalculate account balances based on all transactions
+        const updatedAccounts = fetchedAccounts.map(account => {
+            const accountTransactions = fetchedTransactions.filter(t => t.accountId === account.id);
+            const currentBalance = accountTransactions.reduce((acc, t) => acc + t.amount, 0);
+            return { ...account, balance: currentBalance };
+        });
+
+        setAccounts(updatedAccounts);
         setTransactions(fetchedTransactions);
         setIsLoading(false);
     }, [user, firestore]);
