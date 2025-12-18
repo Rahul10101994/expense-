@@ -46,12 +46,15 @@ const formSchema = z.object({
   amount: z.coerce.number().refine(val => val !== 0, 'Required'),
   accountId: z.string().min(1, 'Required'),
   type: z.enum(['income', 'expense', 'investment', 'transfer']),
-  category: z.string().min(1, 'Required'),
+  category: z.string(),
   date: z.date({ required_error: "Required" }),
   expenseType: z.enum(['need', 'want']).optional(),
 }).refine(data => data.type !== 'expense' || !!data.expenseType, {
   message: 'Classify expense',
   path: ['expenseType'],
+}).refine(data => data.type === 'income' || data.type === 'transfer' || (data.category && data.category.length > 0), {
+    message: 'Required',
+    path: ['category'],
 });
 
 export default function AddTransactionForm({ children, onTransactionAdded }: { children?: ReactNode, onTransactionAdded?: () => void }) {
@@ -87,9 +90,17 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
 
     const selectedAccount = accounts.find(acc => acc.id === values.accountId);
     if (!selectedAccount) return;
+    
+    let category = values.category;
+    if (values.type === 'income') {
+        category = 'Income';
+    } else if (values.type === 'transfer') {
+        category = 'Transfer';
+    }
 
     const transactionData: Omit<Transaction, 'id'| 'userId'> = {
       ...values,
+      category,
       amount: values.type === 'expense' ? -Math.abs(values.amount) : Math.abs(values.amount),
       date: values.date.toISOString(),
     };
@@ -99,7 +110,6 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
 
         toast({ title: 'Success', description: 'Transaction added' });
         setOpen(false);
-        form.reset({ description: '', amount: 0, accountId: '', type: 'expense', category: '' });
         onTransactionAdded?.();
     } catch (error) {
         console.error("Error adding transaction: ", error);
@@ -110,23 +120,25 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
         });
     }
   }
+  
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+        form.reset({ description: '', amount: 0, accountId: '', type: 'expense', category: '' });
+    }
+  }
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-        setOpen(isOpen);
-        if (!isOpen) {
-            form.reset({ description: '', amount: 0, accountId: '', type: 'expense', category: '' });
-        }
-    }}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[400px] p-4 gap-4 overflow-hidden">
+      <DialogContent className="sm:max-w-[400px] p-4 gap-0 flex flex-col">
         <DialogHeader className="pb-2">
           <DialogTitle className="text-lg">New Transaction</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-             <div className="flex p-1 bg-muted rounded-md">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
+            <div className="flex p-1 bg-muted rounded-md mb-4">
               {['expense', 'income', 'transfer'].map((t) => (
                 <button
                   key={t}
@@ -145,7 +157,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
               ))}
             </div>
 
-            <ScrollArea className="h-[60vh] md:h-auto md:max-h-[60vh] pr-4">
+            <ScrollArea className="pr-4 -mr-4">
               <div className="space-y-3">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                    <FormField
@@ -211,7 +223,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
                   )}
                 />
 
-                {transactionType === 'transfer' ? (
+                {transactionType === 'transfer' && (
                   <FormField
                     control={form.control}
                     name="category"
@@ -226,7 +238,9 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
                       </FormItem>
                     )}
                   />
-                ) : (
+                )}
+                
+                {(transactionType === 'expense' || transactionType === 'investment') && (
                   <FormField
                     control={form.control}
                     name="category"
@@ -264,13 +278,12 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
               </div>
             </ScrollArea>
 
-            <Button type="submit" className="w-full h-10 mt-2">Save Transaction</Button>
+            <div className="pt-4 mt-auto">
+                <Button type="submit" className="w-full h-10">Save Transaction</Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
   );
 }
-
-
-    
