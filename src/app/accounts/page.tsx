@@ -10,6 +10,7 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import type { Account, Transaction } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import AddAccountForm from '@/components/accounts/add-account-form';
+import Link from 'next/link';
 
 export default function AccountsPage() {
     const firestore = useFirestore();
@@ -45,7 +46,7 @@ export default function AccountsPage() {
         // 3. Calculate current balance for each account
         const accountsWithCalculatedBalances = fetchedAccounts.map(account => {
             const accountTransactions = allTransactions.filter(t => t.accountId === account.id);
-            const balance = accountTransactions.reduce((acc, t) => acc + t.amount, 0);
+            const balance = accountTransactions.reduce((acc, t) => acc + t.amount, account.type === 'credit' ? 0 : 0);
             return { ...account, balance };
         });
 
@@ -85,20 +86,22 @@ export default function AccountsPage() {
             {!isLoading && accounts && accounts.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {accounts.map(account => (
-                         <Card key={account.id}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-lg font-medium">
-                                    {account.name}
-                                </CardTitle>
-                                <span className="text-sm text-muted-foreground capitalize">{account.type}</span>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-primary">{formatCurrency(account.balance)}</div>
-                                <p className="text-xs text-muted-foreground">
-                                    Current Balance
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <Link href={`/transactions?accountId=${account.id}`} key={account.id}>
+                             <Card className="hover:bg-muted/50 transition-colors h-full">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-lg font-medium">
+                                        {account.name}
+                                    </CardTitle>
+                                    <span className="text-sm text-muted-foreground capitalize">{account.type}</span>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold text-primary">{formatCurrency(account.balance)}</div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Current Balance
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        </Link>
                     ))}
                 </div>
             )}

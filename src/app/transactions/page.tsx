@@ -22,13 +22,18 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getYear, getMonth, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function TransactionsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
     const isMobile = useIsMobile();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    const accountIdFilter = searchParams.get('accountId');
     
     const [filterType, setFilterType] = useState('all');
     const [filterMonth, setFilterMonth] = useState('all');
@@ -83,6 +88,10 @@ export default function TransactionsPage() {
     const filteredTransactions = useMemo(() => {
         let filtered = transactions ? [...transactions] : [];
 
+        if (accountIdFilter) {
+            filtered = filtered.filter(t => t.accountId === accountIdFilter);
+        }
+
         if (filterType !== 'all') {
             filtered = filtered.filter(t => t.type === filterType);
         }
@@ -96,7 +105,7 @@ export default function TransactionsPage() {
         }
 
         return filtered;
-    }, [transactions, filterType, filterMonth, filterYear]);
+    }, [transactions, accountIdFilter, filterType, filterMonth, filterYear]);
     
     const yearOptions = useMemo(() => {
         if (!transactions || transactions.length === 0) return [];
@@ -120,6 +129,10 @@ export default function TransactionsPage() {
         return accounts?.find(acc => acc.id === accountId)?.name || 'Unknown';
     }
 
+    const clearAccountFilter = () => {
+        router.push('/transactions');
+    }
+
     return (
         <Card className={cn(isMobile && "border-0 shadow-none")}>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -136,6 +149,14 @@ export default function TransactionsPage() {
             </CardHeader>
             <CardContent>
                 <div className="flex flex-wrap gap-2 mb-4">
+                    {accountIdFilter && (
+                        <Badge variant="secondary" className="flex items-center gap-2 text-sm">
+                            <span>Account: {getAccountName(accountIdFilter)}</span>
+                             <Button variant="ghost" size="icon" className="h-4 w-4" onClick={clearAccountFilter}>
+                                <X className="h-3 w-3" />
+                            </Button>
+                        </Badge>
+                    )}
                     <Select value={filterType} onValueChange={setFilterType}>
                         <SelectTrigger className="w-full sm:w-[160px] h-9 text-xs">
                             <SelectValue placeholder="Filter by type" />
@@ -180,7 +201,7 @@ export default function TransactionsPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Description</TableHead>
-                            <TableHead>Account</TableHead>
+                            {!accountIdFilter && <TableHead>Account</TableHead>}
                             <TableHead>Date</TableHead>
                              <TableHead>Category</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
@@ -190,7 +211,7 @@ export default function TransactionsPage() {
                         {filteredTransactions.map((transaction) => (
                             <TableRow key={transaction.id}>
                                 <TableCell className="font-medium">{transaction.description}</TableCell>
-                                <TableCell className="text-muted-foreground">{getAccountName(transaction.accountId)}</TableCell>
+                                {!accountIdFilter && <TableCell className="text-muted-foreground">{getAccountName(transaction.accountId)}</TableCell>}
                                 <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
                                  <TableCell>
                                      <div className="flex items-center gap-2">
