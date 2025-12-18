@@ -32,9 +32,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PlusCircle } from 'lucide-react';
-import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useFirestore, useUser } from '@/firebase';
+import { collection, doc, addDoc, writeBatch } from 'firebase/firestore';
 import type { Account, Transaction } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,9 +47,10 @@ const formSchema = z.object({
 
 type AddAccountFormProps = {
   onAccountAdded?: () => void;
+  children?: React.ReactNode;
 };
 
-export default function AddAccountForm({ onAccountAdded }: AddAccountFormProps) {
+export default function AddAccountForm({ onAccountAdded, children }: AddAccountFormProps) {
   const [open, setOpen] = useState(false);
   const firestore = useFirestore();
   const { user } = useUser();
@@ -69,29 +69,36 @@ export default function AddAccountForm({ onAccountAdded }: AddAccountFormProps) 
     if (!user || !firestore) return;
     
     try {
-      const accountsCollection = collection(firestore, `users/${user.uid}/accounts`);
+      const batch = writeBatch(firestore);
       
+      const newAccountRef = doc(collection(firestore, `users/${user.uid}/accounts`));
+      
+      // The `balance` field on the account is for quick display, but is not the source of truth.
+      // The true balance is calculated from transactions.
       const newAccountData: Omit<Account, 'id'> = {
           name: values.name,
           type: values.type,
-          balance: values.balance, // This will be the initial balance, but calculated balance will be used for display
+          balance: values.balance,
           userId: user.uid,
       };
+      batch.set(newAccountRef, newAccountData);
 
-      const newAccountRef = await addDocumentNonBlocking(accountsCollection, newAccountData);
-
-      if (values.balance !== 0 && newAccountRef) {
+      // Create an initial transaction for the starting balance
+      if (values.balance !== 0) {
         const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${newAccountRef.id}/transactions`);
+        const newTransactionRef = doc(transactionCollectionRef);
         const initialTransaction: Omit<Transaction, 'id' | 'userId'> = {
           accountId: newAccountRef.id,
           amount: values.balance,
-          category: 'Income',
+          category: 'Income', // Initial balance is treated as income
           date: new Date().toISOString(),
           description: 'Initial Balance',
           type: 'income',
         };
-        await addDocumentNonBlocking(transactionCollectionRef, initialTransaction);
+        batch.set(newTransactionRef, initialTransaction);
       }
+      
+      await batch.commit();
       
       toast({
         title: 'Account Added',
@@ -115,10 +122,12 @@ export default function AddAccountForm({ onAccountAdded }: AddAccountFormProps) 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Account
-          </Button>
+          {children || (
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Account
+            </Button>
+          )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -149,7 +158,7 @@ export default function AddAccountForm({ onAccountAdded }: AddAccountFormProps) 
                 <FormItem>
                   <FormLabel>Initial Balance</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 1250.00" {...field} />
+                    <Input type="number" step="0.01" placeholder="e.g., 1250.00" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

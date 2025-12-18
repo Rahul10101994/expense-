@@ -33,22 +33,19 @@ export default function AccountsPage() {
             fetchedAccounts.push({ id: doc.id, ...doc.data() } as Account);
         });
 
-        const allTransactions: Transaction[] = [];
-        for (const account of fetchedAccounts) {
+        for (let i = 0; i < fetchedAccounts.length; i++) {
+            const account = fetchedAccounts[i];
             const transactionsQuery = query(collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`));
             const transactionsSnapshot = await getDocs(transactionsQuery);
+            let balance = 0;
             transactionsSnapshot.forEach(doc => {
-                allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                const transaction = doc.data() as Transaction;
+                balance += transaction.amount;
             });
+            fetchedAccounts[i].balance = balance;
         }
         
-        const accountsWithCalculatedBalances = fetchedAccounts.map(account => {
-            const accountTransactions = allTransactions.filter(t => t.accountId === account.id);
-            const balance = accountTransactions.reduce((acc, t) => acc + t.amount, account.type === 'credit' ? 0 : 0);
-            return { ...account, balance };
-        });
-
-        setAccounts(accountsWithCalculatedBalances);
+        setAccounts(fetchedAccounts);
         setIsLoading(false);
     }, [user, firestore]);
 

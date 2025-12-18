@@ -44,8 +44,7 @@ import {
 } from '@/components/ui/select';
 import { Trash2 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
 import type { Account } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,6 +53,7 @@ const formSchema = z.object({
     message: 'Account name must be at least 2 characters.',
   }),
   type: z.enum(['checking', 'savings', 'investment', 'credit', 'other']),
+  balance: z.coerce.number(),
 });
 
 type EditAccountFormProps = {
@@ -73,6 +73,7 @@ export default function EditAccountForm({ account, onAccountChanged, children }:
     defaultValues: {
       name: account.name,
       type: account.type,
+      balance: account.balance,
     },
   });
 
@@ -80,14 +81,32 @@ export default function EditAccountForm({ account, onAccountChanged, children }:
     if (!user || !firestore) return;
     
     try {
+      const batch = writeBatch(firestore);
       const accountDocRef = doc(firestore, `users/${user.uid}/accounts`, account.id);
       
       const updatedAccountData: Partial<Account> = {
           name: values.name,
           type: values.type,
       };
+      batch.update(accountDocRef, updatedAccountData);
 
-      await setDocumentNonBlocking(accountDocRef, updatedAccountData, { merge: true });
+      // Handle balance adjustment
+      const balanceDifference = values.balance - account.balance;
+      if (balanceDifference !== 0) {
+        const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
+        const adjustmentTransaction = {
+          accountId: account.id,
+          amount: balanceDifference,
+          category: balanceDifference > 0 ? 'Income' : 'Expense',
+          date: new Date().toISOString(),
+          description: 'Balance Adjustment',
+          type: balanceDifference > 0 ? 'income' : 'expense',
+        };
+        const newTransactionRef = doc(transactionCollectionRef);
+        batch.set(newTransactionRef, adjustmentTransaction);
+      }
+
+      await batch.commit();
       
       toast({
         title: 'Account Updated',
@@ -154,7 +173,7 @@ export default function EditAccountForm({ account, onAccountChanged, children }:
         <DialogHeader>
           <DialogTitle>Edit Account</DialogTitle>
           <DialogDescription>
-            Update the details for your account.
+            Update the details for your account. The balance will be adjusted via a new transaction.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -167,6 +186,19 @@ export default function EditAccountForm({ account, onAccountChanged, children }:
                   <FormLabel>Account Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Primary Checking" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="balance"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Balance</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -199,7 +231,7 @@ export default function EditAccountForm({ account, onAccountChanged, children }:
                 </FormItem>
               )}
             />
-            <DialogFooter className="flex justify-between w-full !flex-row">
+            <DialogFooter className="flex justify-between w-full !flex-row pt-4">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" type="button"><Trash2 className="h-4 w-4" /></Button>
