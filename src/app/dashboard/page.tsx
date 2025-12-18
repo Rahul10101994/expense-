@@ -55,7 +55,15 @@ export default function DashboardPage() {
         // Recalculate account balances based on all transactions
         const updatedAccounts = fetchedAccounts.map(account => {
             const accountTransactions = fetchedTransactions.filter(t => t.accountId === account.id);
-            const currentBalance = accountTransactions.reduce((acc, t) => acc + t.amount, 0);
+            const currentBalance = accountTransactions.reduce((acc, t) => {
+                // For credit cards, expenses increase the balance (debt) and payments (income) decrease it.
+                if (account.type === 'credit') {
+                    if (t.type === 'expense') return acc + Math.abs(t.amount);
+                    if (t.type === 'income') return acc - Math.abs(t.amount); // Payments to card
+                }
+                // For other accounts, income increases balance, expenses decrease it.
+                return acc + t.amount;
+            }, 0);
             return { ...account, balance: currentBalance };
         });
 

@@ -22,8 +22,9 @@ import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
+import AddTransactionForm from '../transactions/add-transaction-form';
 
 export default function RecentTransactions({ transactions, onTransactionAdded }: { transactions: Transaction[], onTransactionAdded?: () => void }) {
     const recentTransactions = useMemo(() => {
@@ -44,12 +45,20 @@ export default function RecentTransactions({ transactions, onTransactionAdded }:
                     <CardTitle>Recent Transactions</CardTitle>
                     <CardDescription>A list of your most recent transactions.</CardDescription>
                 </div>
-                <Link href="/transactions" passHref>
-                    <Button variant="ghost" size="sm">
-                        See All
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                     <AddTransactionForm onTransactionAdded={onTransactionAdded}>
+                        <Button variant="outline" size="sm">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add
+                        </Button>
+                    </AddTransactionForm>
+                    <Link href="/transactions" passHref>
+                        <Button variant="ghost" size="sm">
+                            See All
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </Link>
+                </div>
             </CardHeader>
             <CardContent className="h-[350px]">
                 <ScrollArea className="h-full">
