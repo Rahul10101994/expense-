@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -24,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
-export default function RecentTransactions({ transactions }: { transactions: Transaction[] }) {
+export default function RecentTransactions({ transactions, onTransactionAdded }: { transactions: Transaction[], onTransactionAdded?: () => void }) {
     const recentTransactions = useMemo(() => {
         return [...transactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
     }, [transactions]);

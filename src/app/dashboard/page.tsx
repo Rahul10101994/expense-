@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { startOfMonth, endOfMonth } from 'date-fns';
 
 
@@ -23,46 +23,47 @@ export default function DashboardPage() {
     const { user } = useUser();
     const currentMonth = useMemo(() => new Date(), []);
     
-    const accountsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, `users/${user.uid}/accounts`);
-    }, [firestore, user]);
-    const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
-    const [allTransactionsLoading, setAllTransactionsLoading] = useState(true);
+    const fetchAllData = useCallback(async () => {
+        if (!user || !firestore) {
+            setIsLoading(false);
+            return;
+        };
+        setIsLoading(true);
+
+        const fetchedAccounts: Account[] = [];
+        const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
+        accountsSnapshot.forEach(doc => {
+            fetchedAccounts.push({ id: doc.id, ...doc.data() } as Account);
+        });
+        
+        const fetchedTransactions: Transaction[] = [];
+        for (const account of fetchedAccounts) {
+            const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
+            const transactionsQuery = query(transactionsColRef, orderBy('date', 'desc'));
+            const transactionsSnapshot = await getDocs(transactionsQuery);
+            transactionsSnapshot.forEach(doc => {
+                fetchedTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+            });
+        }
+        
+        fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        setAccounts(fetchedAccounts);
+        setTransactions(fetchedTransactions);
+        setIsLoading(false);
+    }, [user, firestore]);
 
     useEffect(() => {
-        if (!user || !firestore || accountsLoading) return;
-        if (!accounts) {
-            setAllTransactions([]);
-            setAllTransactionsLoading(false);
-            return;
-        }
-
-        const fetchAllTransactions = async () => {
-            setAllTransactionsLoading(true);
-            const transactions: Transaction[] = [];
-            for (const account of accounts) {
-                const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
-                const transactionsQuery = query(transactionsColRef, orderBy('date', 'desc'));
-                const transactionsSnapshot = await getDocs(transactionsQuery);
-                transactionsSnapshot.forEach(doc => {
-                    transactions.push({ id: doc.id, ...doc.data() } as Transaction);
-                });
-            }
-            // Sort all transactions by date after fetching them
-            transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setAllTransactions(transactions);
-            setAllTransactionsLoading(false);
-        };
-
-        fetchAllTransactions();
-    }, [user, firestore, accounts, accountsLoading]);
+        fetchAllData();
+    }, [fetchAllData]);
 
     const recentTransactions = useMemo(() => {
-        return allTransactions.slice(0, 10);
-    }, [allTransactions]);
+        return transactions.slice(0, 10);
+    }, [transactions]);
 
 
     const budgetsQuery = useMemoFirebase(() => {
@@ -86,9 +87,9 @@ export default function DashboardPage() {
     const { data: goals, isLoading: goalsLoading } = useCollection<Goal>(goalsQuery);
     
     const budgets: Budget[] = useMemo(() => {
-        if (!savedBudgets || !allTransactions) return [];
+        if (!savedBudgets || !transactions) return [];
 
-        const spendingByCategory = allTransactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
@@ -104,10 +105,10 @@ export default function DashboardPage() {
                 month: budget.month
         }));
 
-    }, [savedBudgets, allTransactions]);
+    }, [savedBudgets, transactions]);
     
 
-    if (accountsLoading || budgetsLoading || goalsLoading || allTransactionsLoading) {
+    if (isLoading || budgetsLoading || goalsLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Spinner size="large" />
@@ -116,7 +117,7 @@ export default function DashboardPage() {
     }
     
     const financialData = {
-        transactions: allTransactions || [],
+        transactions: transactions || [],
         accounts: accounts || [],
         budgets,
         goals: goals || [],
@@ -140,7 +141,7 @@ export default function DashboardPage() {
       </div>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4 h-auto lg:h-[440px]">
-          <RecentTransactions transactions={recentTransactions} />
+          <RecentTransactions transactions={recentTransactions} onTransactionAdded={fetchAllData}/>
         </Card>
         <div className="col-span-1 lg:col-span-3 space-y-4">
             <AiInsights transactions={financialData.transactions} goals={financialData.goals} />
