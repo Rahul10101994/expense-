@@ -15,7 +15,7 @@ import AddTransactionForm from '@/components/transactions/add-transaction-form';
 import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import type { Transaction, Account } from '@/lib/types';
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -34,37 +34,46 @@ export default function TransactionsPage() {
     const [filterMonth, setFilterMonth] = useState('all');
     const [filterYear, setFilterYear] = useState('all');
 
-     const accountsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, `users/${user.uid}/accounts`);
-    }, [firestore, user]);
-    const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
-
+    const [accounts, setAccounts] = useState<Account[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [transactionsLoading, setTransactionsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const fetchTransactions = useCallback(async () => {
-        if (!user || !firestore || !accounts) return;
-        setTransactionsLoading(true);
-        const allTransactions: Transaction[] = [];
-        for (const account of accounts) {
+    const fetchAllData = useCallback(async () => {
+        if (!user || !firestore) {
+            setIsLoading(false);
+            return;
+        };
+        setIsLoading(true);
+
+        // 1. Fetch accounts
+        const fetchedAccounts: Account[] = [];
+        const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
+        accountsSnapshot.forEach(doc => {
+            fetchedAccounts.push({ id: doc.id, ...doc.data() } as Account);
+        });
+        setAccounts(fetchedAccounts);
+        
+        // 2. Fetch transactions for all accounts
+        const fetchedTransactions: Transaction[] = [];
+        for (const account of fetchedAccounts) {
             const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
-            const q = query(transactionsColRef, orderBy('date', 'desc'));
-            const transactionsSnapshot = await getDocs(q);
+            const transactionsQuery = query(transactionsColRef, orderBy('date', 'desc'));
+            const transactionsSnapshot = await getDocs(transactionsQuery);
             transactionsSnapshot.forEach(doc => {
-                allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                fetchedTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
             });
         }
-        allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setTransactions(allTransactions);
-        setTransactionsLoading(false);
-    }, [user, firestore, accounts]);
+        
+        // Sort all transactions by date after fetching
+        fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        setTransactions(fetchedTransactions);
+        setIsLoading(false);
+    }, [user, firestore]);
 
     useEffect(() => {
-        if (accounts) {
-            fetchTransactions();
-        }
-    }, [accounts, fetchTransactions]);
+        fetchAllData();
+    }, [fetchAllData]);
 
     const filteredTransactions = useMemo(() => {
         let filtered = transactions ? [...transactions] : [];
@@ -106,8 +115,6 @@ export default function TransactionsPage() {
         return accounts?.find(acc => acc.id === accountId)?.name || 'Unknown';
     }
 
-    const isLoading = accountsLoading || transactionsLoading;
-
     return (
         <Card className={cn(isMobile && "border-0 shadow-none")}>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -115,7 +122,7 @@ export default function TransactionsPage() {
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                 <AddTransactionForm onTransactionAdded={fetchTransactions}>
+                 <AddTransactionForm onTransactionAdded={fetchAllData}>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Transaction
