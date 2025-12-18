@@ -71,11 +71,10 @@ type AddTransactionFormProps = {
 
 export default function AddTransactionForm({ transaction, children, onTransactionAdded }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
 
   const accountsQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -123,6 +122,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     
     setOpen(false);
     onTransactionAdded?.();
+    form.reset();
   }
 
   const filteredCategories = useMemo(() => {
@@ -130,27 +130,35 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     if (transactionType === 'transfer') return [];
     return categories.filter(c => c.type === transactionType);
   }, [categories, transactionType]);
-  
+
   const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
-        form.reset({
-            description: '',
-            amount: 0,
-            accountId: accounts?.[0]?.id || '',
-            type: 'expense',
-            category: '',
-            date: undefined,
-        })
-    }
     setOpen(isOpen);
-  }
+    if (isOpen) {
+      form.reset(
+        transaction
+          ? {
+              ...transaction,
+              date: new Date(transaction.date),
+              amount: Math.abs(transaction.amount),
+            }
+          : {
+              description: '',
+              amount: 0,
+              accountId: accounts?.[0]?.id || '',
+              type: 'expense',
+              category: '',
+              date: undefined,
+            }
+      );
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Transaction</DialogTitle>
+          <DialogTitle>{transaction ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
           <DialogDescription>
             Enter the details of your transaction below.
           </DialogDescription>
@@ -184,46 +192,47 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                     </FormItem>
                 )}
                 />
-                 <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                        <FormLabel>Date</FormLabel>
-                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                            <PopoverTrigger asChild>
-                            <FormControl>
-                                <Button
-                                variant={"outline"}
-                                className={cn(
-                                    "pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                )}
-                                >
-                                {field.value ? (
-                                    format(field.value, "PPP")
-                                ) : (
-                                    <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                            </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={(date) => {
-                                    field.onChange(date);
-                                    setIsCalendarOpen(false);
-                                }}
-                                initialFocus
-                            />
-                            </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                        </FormItem>
-                    )}
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Date</FormLabel>
+                      <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              type="button"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={(date) => {
+                              field.onChange(date);
+                              setIsCalendarOpen(false);
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
             </div>
              <FormField
@@ -232,7 +241,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Account</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select an account" />
@@ -254,7 +263,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue('category', ''); }} defaultValue={field.value}>
+                  <Select onValueChange={(value) => { field.onChange(value); form.setValue('category', ''); }} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a transaction type" />
@@ -277,7 +286,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger disabled={!transactionType || filteredCategories.length === 0}>
                                 <SelectValue placeholder="Select a category" />
@@ -303,7 +312,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                     <FormLabel>Is this a need or a want?</FormLabel>
                     <FormControl>
                       <RadioGroup
-                        onValueChange={field.onChange}
+                        onValue-change={field.onChange}
                         defaultValue={field.value}
                         className="flex items-center space-x-4"
                       >
