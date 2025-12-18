@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, type ReactNode, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -36,7 +35,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Transaction, Category, Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -312,7 +311,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                     <FormLabel>Is this a need or a want?</FormLabel>
                     <FormControl>
                       <RadioGroup
-                        onValue-change={field.onChange}
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                         className="flex items-center space-x-4"
                       >
