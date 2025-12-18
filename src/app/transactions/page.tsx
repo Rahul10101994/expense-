@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -16,7 +16,7 @@ import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import type { Transaction, Account } from '@/lib/types';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -43,25 +43,28 @@ export default function TransactionsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [transactionsLoading, setTransactionsLoading] = useState(true);
 
-    const fetchTransactions = async () => {
+    const fetchTransactions = useCallback(async () => {
         if (!user || !firestore || !accounts) return;
         setTransactionsLoading(true);
         const allTransactions: Transaction[] = [];
         for (const account of accounts) {
-            const transactionsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`));
+            const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
+            const q = query(transactionsColRef, orderBy('date', 'desc'));
+            const transactionsSnapshot = await getDocs(q);
             transactionsSnapshot.forEach(doc => {
                 allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
             });
         }
+        allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setTransactions(allTransactions);
         setTransactionsLoading(false);
-    };
+    }, [user, firestore, accounts]);
 
     useEffect(() => {
         if (accounts) {
             fetchTransactions();
         }
-    }, [accounts]);
+    }, [accounts, fetchTransactions]);
 
     const filteredTransactions = useMemo(() => {
         let filtered = transactions ? [...transactions] : [];
@@ -78,7 +81,7 @@ export default function TransactionsPage() {
             filtered = filtered.filter(t => getYear(new Date(t.date)) === parseInt(filterYear));
         }
 
-        return filtered.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return filtered;
     }, [transactions, filterType, filterMonth, filterYear]);
     
     const yearOptions = useMemo(() => {
