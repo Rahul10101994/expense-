@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -84,11 +84,12 @@ const formSchema = z.discriminatedUnion("type", [
 ]);
 
 type AddTransactionFormProps = {
-  onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  transaction?: Transaction;
   children?: ReactNode;
+  onTransactionAdded?: () => void;
 };
 
-export default function AddTransactionForm({ onAddTransaction, children }: AddTransactionFormProps) {
+export default function AddTransactionForm({ transaction, children, onTransactionAdded }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const { toast } = useToast();
@@ -104,13 +105,27 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      type: TransactionType.Expense,
-      description: '',
-      amount: 0,
-      date: new Date(),
-    },
   });
+
+  useEffect(() => {
+    if (transaction) {
+      form.reset({
+        ...transaction,
+        date: new Date(transaction.date),
+        amount: Math.abs(transaction.amount),
+        // @ts-ignore
+        accountId: transaction.accountId,
+      });
+    } else {
+      form.reset({
+        type: TransactionType.Expense,
+        description: '',
+        amount: 0,
+        date: new Date(),
+      });
+    }
+  }, [transaction, form, open]);
+
 
   const transactionType = form.watch('type');
 
@@ -132,13 +147,12 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
         return;
       }
 
-      // Create two transactions for the transfer
       const expenseTransactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${fromAccountId}/transactions`));
       batch.set(expenseTransactionRef, {
         description: `Transfer to ${toAccount.name}`,
         amount: -amount,
         date: date.toISOString(),
-        type: TransactionType.Expense,
+        type: TransactionType.Transfer,
         category: 'Transfer',
         accountId: fromAccountId,
         userId: user.uid,
@@ -149,35 +163,17 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
         description: `Transfer from ${fromAccount.name}`,
         amount: amount,
         date: date.toISOString(),
-        type: TransactionType.Income,
+        type: TransactionType.Transfer,
         category: 'Transfer',
         accountId: toAccountId,
         userId: user.uid,
       });
 
-      // Update balances
       const fromAccountRef = doc(firestore, `users/${user.uid}/accounts`, fromAccountId);
       batch.update(fromAccountRef, { balance: fromAccount.balance - amount });
       const toAccountRef = doc(firestore, `users/${user.uid}/accounts`, toAccountId);
       batch.update(toAccountRef, { balance: toAccount.balance + amount });
       
-      try {
-        await batch.commit();
-        toast({
-            title: 'Transfer Successful',
-            description: `Transferred ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount)} from ${fromAccount.name} to ${toAccount.name}.`,
-        });
-        setOpen(false);
-        form.reset();
-      } catch(e) {
-         console.error('Error completing transfer:', e);
-          toast({
-              variant: 'destructive',
-              title: 'Error',
-              description: 'Failed to complete transfer. Please try again.',
-          });
-      }
-
     } else { // Income or Expense
       const { accountId, amount, type, ...rest } = values;
       const selectedAccount = accounts.find(acc => acc.id === accountId);
@@ -188,47 +184,51 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
       }
 
       const transactionAmount = type === 'income' ? amount : -amount;
-      const newBalance = selectedAccount.balance + transactionAmount;
-
-      const newTransactionData = {
-        ...rest,
-        type,
-        amount: transactionAmount,
-        date: values.date.toISOString(),
-        category: values.category as Transaction['category'],
-        accountId,
-        userId: user.uid,
-        expenseType: values.type === 'expense' ? values.expenseType : undefined,
-      };
-
+      
       const transactionRef = doc(collection(firestore, `users/${user.uid}/accounts/${accountId}/transactions`));
-      batch.set(transactionRef, newTransactionData);
+      batch.set(transactionRef, {
+          ...rest,
+          type,
+          amount: transactionAmount,
+          date: values.date.toISOString(),
+          category: values.category as Transaction['category'],
+          accountId,
+          userId: user.uid,
+          expenseType: values.type === 'expense' ? values.expenseType : undefined,
+      });
 
       const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountId);
+      const newBalance = selectedAccount.balance + transactionAmount;
       batch.update(accountRef, { balance: newBalance });
+    }
 
-      try {
+    try {
         await batch.commit();
-        onAddTransaction(newTransactionData as Omit<Transaction, 'id'>);
         toast({
-            title: 'Transaction Added',
-            description: `${values.description} has been successfully recorded.`,
+            title: 'Transaction Saved',
+            description: `The transaction has been successfully saved.`,
         });
         setOpen(false);
+        if (onTransactionAdded) onTransactionAdded();
+    } catch (error) {
+      console.error('Error saving transaction:', error);
+      toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to save transaction. Please try again.',
+      });
+    }
+  }
+  
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
         form.reset();
-      } catch (error) {
-        console.error('Error adding transaction:', error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to add transaction. Please try again.',
-        });
-      }
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen} modal={false}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children || (
           <Button>
@@ -483,5 +483,3 @@ export default function AddTransactionForm({ onAddTransaction, children }: AddTr
     </Dialog>
   );
 }
-
-    

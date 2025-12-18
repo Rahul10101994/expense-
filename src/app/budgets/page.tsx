@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
 import BudgetGoals from '@/components/dashboard/budget-goals';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import type { Transaction, Budget } from '@/lib/types';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import type { Transaction, Budget, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
@@ -21,6 +21,47 @@ export default function BudgetsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
     const currentMonth = useMemo(() => new Date(), []);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactionsLoading, setTransactionsLoading] = useState(true);
+
+    const accountsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return collection(firestore, `users/${user.uid}/accounts`);
+    }, [firestore, user]);
+    const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
+    
+    useEffect(() => {
+        if (!user || !firestore || accountsLoading) return;
+        if (!accounts || accounts.length === 0) {
+            setTransactions([]);
+            setTransactionsLoading(false);
+            return;
+        }
+        
+        const fetchTransactions = async () => {
+            setTransactionsLoading(true);
+            const allTransactions: Transaction[] = [];
+            
+            const monthStart = startOfMonth(currentMonth).toISOString();
+            const monthEnd = endOfMonth(currentMonth).toISOString();
+
+            for (const account of accounts) {
+                const transactionsQuery = query(
+                    collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`),
+                    where('date', '>=', monthStart),
+                    where('date', '<=', monthEnd)
+                );
+                const transactionsSnapshot = await getDocs(transactionsQuery);
+                transactionsSnapshot.forEach(doc => {
+                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                });
+            }
+            setTransactions(allTransactions);
+            setTransactionsLoading(false);
+        };
+
+        fetchTransactions();
+    }, [user, firestore, accounts, accountsLoading, currentMonth]);
 
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -35,18 +76,6 @@ export default function BudgetsPage() {
     
     const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
-    const transactionsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        const monthStart = startOfMonth(currentMonth).toISOString();
-        const monthEnd = endOfMonth(currentMonth).toISOString();
-        return query(
-            collection(firestore, `users/${user.uid}/accounts/default/transactions`),
-            where('date', '>=', monthStart),
-            where('date', '<=', monthEnd)
-        );
-    }, [firestore, user, currentMonth]);
-
-    const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets) return [];
@@ -77,7 +106,7 @@ export default function BudgetsPage() {
         }).format(amount);
     };
 
-    if (budgetsLoading || transactionsLoading) {
+    if (budgetsLoading || transactionsLoading || accountsLoading) {
         return (
             <div className="flex h-64 w-full items-center justify-center">
                 <Spinner size="large" />

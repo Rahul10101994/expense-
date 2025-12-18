@@ -30,29 +30,11 @@ const navItems = [
 
 export default function AppBottomNav() {
   const pathname = usePathname();
-  const firestore = useFirestore();
-  const { user } = useUser();
-
-   const transactionsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, `users/${user.uid}/accounts/default/transactions`);
-    }, [firestore, user]);
-
-  const handleAddTransaction = (newTransaction: Omit<Transaction, 'id' | 'accountId'>) => {
-    if (!transactionsQuery) return;
-    
-    const transactionData = {
-        ...newTransaction,
-        accountId: 'default',
-    };
-    addDocumentNonBlocking(transactionsQuery, transactionData);
-  };
-
-
+  
   return (
     <>
       <div className="fixed bottom-20 right-4 z-50 md:hidden">
-        <AddTransactionForm onAddTransaction={handleAddTransaction}>
+        <AddTransactionForm>
           <button className="bg-primary text-primary-foreground rounded-full h-14 w-14 flex items-center justify-center shadow-lg">
             <Plus className="h-6 w-6" />
           </button>

@@ -11,10 +11,10 @@ import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-ch
 
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import Link from 'next/link';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { startOfMonth, endOfMonth } from 'date-fns';
 
 
@@ -22,20 +22,39 @@ export default function DashboardPage() {
     const firestore = useFirestore();
     const { user } = useUser();
     const currentMonth = useMemo(() => new Date(), []);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactionsLoading, setTransactionsLoading] = useState(true);
 
-    const transactionsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
-    }, [firestore, user]);
-    
-    const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
-    
     const accountsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return collection(firestore, `users/${user.uid}/accounts`);
     }, [firestore, user]);
-
     const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
+
+    useEffect(() => {
+        if (!user || !firestore || accountsLoading) return;
+        if (!accounts || accounts.length === 0) {
+            setTransactions([]);
+            setTransactionsLoading(false);
+            return;
+        }
+
+        const fetchTransactions = async () => {
+            setTransactionsLoading(true);
+            const allTransactions: Transaction[] = [];
+            for (const account of accounts) {
+                const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
+                const transactionsSnapshot = await getDocs(transactionsColRef);
+                transactionsSnapshot.forEach(doc => {
+                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                });
+            }
+            setTransactions(allTransactions);
+            setTransactionsLoading(false);
+        };
+
+        fetchTransactions();
+    }, [user, firestore, accounts, accountsLoading]);
 
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;

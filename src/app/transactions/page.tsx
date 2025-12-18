@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
   Table,
@@ -16,7 +16,7 @@ import { CategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 import type { Transaction, Account } from '@/lib/types';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, getDocs } from 'firebase/firestore';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,22 +30,39 @@ export default function TransactionsPage() {
     const { user } = useUser();
     const isMobile = useIsMobile();
     
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     const [filterType, setFilterType] = useState('all');
     const [filterMonth, setFilterMonth] = useState('all');
     const [filterYear, setFilterYear] = useState('all');
 
-    const transactionsQuery = useMemoFirebase(() => {
+     const accountsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/accounts/default/transactions`));
+        return collection(firestore, `users/${user.uid}/accounts`);
     }, [firestore, user]);
-    
-    const { data: transactions, isLoading } = useCollection<Transaction>(transactionsQuery);
+    const { data: accounts } = useCollection<Account>(accountsQuery);
 
-    const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
-        // The form now handles adding the document.
-        // We can use this callback to optimistically update the UI if needed,
-        // but for now, we'll let the real-time listener handle it.
-    };
+    useEffect(() => {
+        if (!user || !firestore || !accounts) return;
+
+        const fetchTransactions = async () => {
+            setIsLoading(true);
+            const allTransactions: Transaction[] = [];
+            for (const account of accounts) {
+                const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
+                const transactionsSnapshot = await getDocs(transactionsColRef);
+                transactionsSnapshot.forEach(doc => {
+                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                });
+            }
+            setTransactions(allTransactions);
+            setIsLoading(false);
+        };
+
+        fetchTransactions();
+
+    }, [user, firestore, accounts]);
     
     const filteredTransactions = useMemo(() => {
         let filtered = transactions ? [...transactions] : [];
@@ -83,6 +100,10 @@ export default function TransactionsPage() {
         }).format(amount);
     };
 
+    const getAccountName = (accountId: string) => {
+        return accounts?.find(acc => acc.id === accountId)?.name || 'Unknown';
+    }
+
     return (
         <Card className={cn(isMobile && "border-0 shadow-none")}>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -90,7 +111,7 @@ export default function TransactionsPage() {
                     <CardTitle>All Transactions</CardTitle>
                     <CardDescription>A complete list of your transactions.</CardDescription>
                 </div>
-                 <AddTransactionForm onAddTransaction={handleAddTransaction}>
+                 <AddTransactionForm>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Transaction
@@ -143,6 +164,7 @@ export default function TransactionsPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Description</TableHead>
+                            <TableHead>Account</TableHead>
                             <TableHead>Date</TableHead>
                              <TableHead>Category</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
@@ -152,6 +174,7 @@ export default function TransactionsPage() {
                         {filteredTransactions.map((transaction) => (
                             <TableRow key={transaction.id}>
                                 <TableCell className="font-medium">{transaction.description}</TableCell>
+                                <TableCell className="text-muted-foreground">{getAccountName(transaction.accountId)}</TableCell>
                                 <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
                                  <TableCell>
                                      <div className="flex items-center gap-2">
