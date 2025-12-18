@@ -1,28 +1,62 @@
 
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PlusCircle } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import type { Account } from '@/lib/types';
+import { collection, getDocs, query } from 'firebase/firestore';
+import type { Account, Transaction } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import AddAccountForm from '@/components/accounts/add-account-form';
 
 export default function AccountsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
-    
-    const accountsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, `users/${user.uid}/accounts`);
-    }, [firestore, user]);
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const { data: accounts, isLoading } = useCollection<Account>(accountsQuery);
-    
+    const fetchAllData = useCallback(async () => {
+        if (!user || !firestore) {
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true);
+
+        // 1. Fetch all account documents
+        const accountsQuery = query(collection(firestore, `users/${user.uid}/accounts`));
+        const accountsSnapshot = await getDocs(accountsQuery);
+        const fetchedAccounts: Account[] = [];
+        accountsSnapshot.forEach(doc => {
+            fetchedAccounts.push({ id: doc.id, ...doc.data() } as Account);
+        });
+
+        // 2. Fetch all transactions for all accounts
+        const allTransactions: Transaction[] = [];
+        for (const account of fetchedAccounts) {
+            const transactionsQuery = query(collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`));
+            const transactionsSnapshot = await getDocs(transactionsQuery);
+            transactionsSnapshot.forEach(doc => {
+                allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+            });
+        }
+        
+        // 3. Calculate current balance for each account
+        const accountsWithCalculatedBalances = fetchedAccounts.map(account => {
+            const accountTransactions = allTransactions.filter(t => t.accountId === account.id);
+            const balance = accountTransactions.reduce((acc, t) => acc + t.amount, 0);
+            return { ...account, balance };
+        });
+
+        setAccounts(accountsWithCalculatedBalances);
+        setIsLoading(false);
+    }, [user, firestore]);
+
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
             style: 'currency',
@@ -38,7 +72,7 @@ export default function AccountsPage() {
                         <CardTitle>Accounts</CardTitle>
                         <CardDescription>An overview of all your financial accounts.</CardDescription>
                     </div>
-                    <AddAccountForm />
+                    <AddAccountForm onAccountAdded={fetchAllData} />
                 </CardHeader>
             </Card>
 
@@ -48,7 +82,7 @@ export default function AccountsPage() {
                 </div>
             )}
             
-            {!isLoading && accounts && (
+            {!isLoading && accounts && accounts.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {accounts.map(account => (
                          <Card key={account.id}>
@@ -73,7 +107,7 @@ export default function AccountsPage() {
                 <Card className="flex flex-col items-center justify-center text-center p-8 border-dashed">
                      <CardTitle className="mb-2">No Accounts Found</CardTitle>
                     <CardDescription className="mb-4">Get started by adding your first financial account.</CardDescription>
-                    <AddAccountForm />
+                    <AddAccountForm onAccountAdded={fetchAllData} />
                 </Card>
             )}
         </div>

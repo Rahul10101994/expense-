@@ -33,9 +33,10 @@ import {
 } from '@/components/ui/select';
 import { PlusCircle } from 'lucide-react';
 import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import type { Account } from '@/lib/types';
+import type { Account, Transaction } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -45,15 +46,15 @@ const formSchema = z.object({
   balance: z.coerce.number(),
 });
 
-export default function AddAccountForm() {
+type AddAccountFormProps = {
+  onAccountAdded?: () => void;
+};
+
+export default function AddAccountForm({ onAccountAdded }: AddAccountFormProps) {
   const [open, setOpen] = useState(false);
   const firestore = useFirestore();
   const { user } = useUser();
-
-  const accountsCollection = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, `users/${user.uid}/accounts`);
-  }, [firestore, user]);
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,17 +65,51 @@ export default function AddAccountForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!accountsCollection || !user) return;
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user || !firestore) return;
     
-    const newAccount: Omit<Account, 'id'> = {
-        ...values,
-        userId: user.uid,
-    }
+    try {
+      const accountsCollection = collection(firestore, `users/${user.uid}/accounts`);
+      
+      const newAccountData: Omit<Account, 'id'> = {
+          name: values.name,
+          type: values.type,
+          balance: values.balance, // This will be the initial balance, but calculated balance will be used for display
+          userId: user.uid,
+      };
 
-    addDocumentNonBlocking(accountsCollection, newAccount);
-    setOpen(false);
-    form.reset();
+      const newAccountRef = await addDocumentNonBlocking(accountsCollection, newAccountData);
+
+      if (values.balance !== 0 && newAccountRef) {
+        const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${newAccountRef.id}/transactions`);
+        const initialTransaction: Omit<Transaction, 'id' | 'userId'> = {
+          accountId: newAccountRef.id,
+          amount: values.balance,
+          category: 'Income',
+          date: new Date().toISOString(),
+          description: 'Initial Balance',
+          type: 'income',
+        };
+        await addDocumentNonBlocking(transactionCollectionRef, initialTransaction);
+      }
+      
+      toast({
+        title: 'Account Added',
+        description: `${values.name} has been added to your accounts.`,
+      });
+      
+      setOpen(false);
+      form.reset();
+      onAccountAdded?.();
+
+    } catch (error) {
+       toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to add account.',
+      });
+      console.error(error);
+    }
   }
 
   return (
@@ -112,7 +147,7 @@ export default function AddAccountForm() {
               name="balance"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current Balance</FormLabel>
+                  <FormLabel>Initial Balance</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 1250.00" {...field} />
                   </FormControl>
