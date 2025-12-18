@@ -19,14 +19,20 @@ export default function AiInsights({ transactions, goals }: { transactions: Tran
     const spendingByCategory = transactions
       .filter(t => t.type === 'expense')
       .reduce((acc, t) => {
-        acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+        const categoryKey = t.category || 'Other';
+        acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
         return acc;
       }, {} as Record<string, number>);
       
     const topCategory = Object.entries(spendingByCategory).sort(([, a], [, b]) => b - a)[0]?.[0];
 
-    const spendingPatterns = `User's top spending category is ${topCategory || 'not available'}.`;
-    const financialGoals = goals.map(g => g.name).join(', ');
+    const spendingPatterns = `User's top spending category is ${topCategory || 'not yet available'}. Total monthly spending is significant.`;
+    
+    let financialGoals = "No specific financial goals have been set yet.";
+    if (goals && goals.length > 0) {
+      financialGoals = goals.map(g => g.name).join(', ');
+    }
+
 
     return {
       income: totalIncome,
@@ -37,8 +43,8 @@ export default function AiInsights({ transactions, goals }: { transactions: Tran
 
   useEffect(() => {
     async function fetchInsights() {
-      if (!inputData.income || !inputData.spendingPatterns || !inputData.financialGoals) {
-        setInsights("Not enough data to generate insights.");
+      if (!inputData.income && transactions.length === 0) {
+        setInsights("Add some transactions to get started with personalized financial insights.");
         setLoading(false);
         return;
       }
@@ -58,7 +64,7 @@ export default function AiInsights({ transactions, goals }: { transactions: Tran
     }
 
     fetchInsights();
-  }, [inputData]);
+  }, [inputData, transactions.length]);
 
   return (
     <Card>
