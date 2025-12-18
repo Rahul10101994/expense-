@@ -49,7 +49,9 @@ const formSchema = z.object({
   accountId: z.string().min(1, 'Please select an account.'),
   type: z.enum(['income', 'expense', 'investment', 'transfer']),
   category: z.string().min(1, 'Please select a category.'),
-  date: z.date(),
+  date: z.date({
+    required_error: "A date is required.",
+  }),
   expenseType: z.enum(['need', 'want']).optional(),
 }).refine(data => {
     if (data.type === 'expense') {
@@ -69,10 +71,11 @@ type AddTransactionFormProps = {
 
 export default function AddTransactionForm({ transaction, children, onTransactionAdded }: AddTransactionFormProps) {
   const [open, setOpen] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
 
   const accountsQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -94,7 +97,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
       accountId: '',
       type: 'expense',
       category: '',
-      date: new Date(),
+      date: undefined,
     },
   });
 
@@ -119,7 +122,6 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     });
     
     setOpen(false);
-    form.reset();
     onTransactionAdded?.();
   }
 
@@ -130,16 +132,14 @@ export default function AddTransactionForm({ transaction, children, onTransactio
   }, [categories, transactionType]);
   
   const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      form.reset();
-    } else {
+    if (isOpen) {
         form.reset({
             description: '',
             amount: 0,
             accountId: accounts?.[0]?.id || '',
             type: 'expense',
             category: '',
-            date: new Date(),
+            date: undefined,
         })
     }
     setOpen(isOpen);
@@ -335,5 +335,3 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     </Dialog>
   );
 }
-
-    
