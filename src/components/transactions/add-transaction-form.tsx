@@ -62,6 +62,9 @@ const formSchema = z.object({
 }, {
     message: 'Please classify the expense as a need or a want.',
     path: ['expenseType'],
+}).refine(data => data.type !== 'transfer' || data.category, {
+    message: 'Category is required.',
+    path: ['category'],
 });
 
 type AddTransactionFormProps = {
@@ -103,23 +106,68 @@ export default function AddTransactionForm({ transaction, children, onTransactio
   });
 
   const transactionType = form.watch('type');
+  
+  const setTransactionType = (type: 'income' | 'expense' | 'transfer' | 'investment') => {
+    form.setValue('type', type);
+    form.setValue('category', '');
+    if (type !== 'expense') {
+      form.clearErrors('expenseType');
+      form.setValue('expenseType', undefined);
+    }
+  }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user || !firestore) return;
 
-    const transactionData = {
-      ...values,
-      amount: values.type === 'expense' ? -Math.abs(values.amount) : Math.abs(values.amount),
-      date: values.date.toISOString(),
-      userId: user.uid,
-    };
+    let transactionData;
+
+    if (values.type === 'transfer') {
+        // For transfers, create two transactions
+        const transferAmount = Math.abs(values.amount);
+        
+        // Outgoing transaction
+        const outgoingTx = {
+            description: `Transfer to ${values.category}`, // Here category is the target account name
+            amount: -transferAmount,
+            accountId: values.accountId,
+            type: 'transfer' as const,
+            category: 'Transfer',
+            date: values.date.toISOString(),
+            userId: user.uid,
+        };
+        const transactionsColOutgoing = collection(firestore, `users/${user.uid}/accounts/${values.accountId}/transactions`);
+        addDocumentNonBlocking(transactionsColOutgoing, outgoingTx);
+
+        // Incoming transaction
+        const targetAccount = accounts?.find(acc => acc.name === values.category);
+        if (targetAccount) {
+            const incomingTx = {
+                description: `Transfer from ${accounts?.find(acc => acc.id === values.accountId)?.name}`,
+                amount: transferAmount,
+                accountId: targetAccount.id,
+                type: 'transfer' as const,
+                category: 'Transfer',
+                date: values.date.toISOString(),
+                userId: user.uid,
+            };
+            const transactionsColIncoming = collection(firestore, `users/${user.uid}/accounts/${targetAccount.id}/transactions`);
+            addDocumentNonBlocking(transactionsColIncoming, incomingTx);
+        }
+    } else {
+        transactionData = {
+          ...values,
+          amount: values.type === 'expense' ? -Math.abs(values.amount) : Math.abs(values.amount),
+          date: values.date.toISOString(),
+          userId: user.uid,
+        };
+        const transactionsCol = collection(firestore, `users/${user.uid}/accounts/${values.accountId}/transactions`);
+        addDocumentNonBlocking(transactionsCol, transactionData);
+    }
     
-    const transactionsCol = collection(firestore, `users/${user.uid}/accounts/${values.accountId}/transactions`);
-    addDocumentNonBlocking(transactionsCol, transactionData);
 
     toast({
         title: 'Transaction Added',
-        description: `${values.description} has been successfully added.`,
+        description: `Your transaction has been successfully added.`,
     });
     
     setOpen(false);
@@ -131,6 +179,11 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     if (transactionType === 'transfer') return [];
     return categories.filter(c => c.type === transactionType);
   }, [categories, transactionType]);
+
+  const transferAccounts = useMemo(() => {
+    if (!accounts || !form.getValues('accountId')) return [];
+    return accounts.filter(acc => acc.id !== form.getValues('accountId'));
+  }, [accounts, form.watch('accountId')]);
   
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
@@ -158,6 +211,11 @@ export default function AddTransactionForm({ transaction, children, onTransactio
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
+            <div className="grid grid-cols-3 gap-2 mb-4">
+                <Button type="button" variant={transactionType === 'income' ? 'default' : 'outline'} onClick={() => setTransactionType('income')}>Income</Button>
+                <Button type="button" variant={transactionType === 'expense' ? 'default' : 'outline'} onClick={() => setTransactionType('expense')}>Expense</Button>
+                <Button type="button" variant={transactionType === 'transfer' ? 'default' : 'outline'} onClick={() => setTransactionType('transfer')}>Transfer</Button>
+            </div>
              <ScrollArea className="pr-6 -mr-6">
                 <div className="space-y-3">
                     <FormField
@@ -236,52 +294,53 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                         />
                     </div>
                     <FormField
-                    control={form.control}
-                    name="accountId"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Account</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select an account" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {accounts?.map(account => (
-                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
+                        control={form.control}
+                        name="accountId"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>{transactionType === 'transfer' ? 'From Account' : 'Account'}</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select an account" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {accounts?.map(account => (
+                                    <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
                     />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Type</FormLabel>
-                        <Select onValueChange={(value) => { field.onChange(value); form.setValue('category', ''); }} value={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a transaction type" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            <SelectItem value="income">Income</SelectItem>
-                            <SelectItem value="expense">Expense</SelectItem>
-                            <SelectItem value="investment">Investment</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    {transactionType && transactionType !== 'transfer' && (
+                    
+                    {transactionType === 'transfer' ? (
                         <FormField
+                            control={form.control}
+                            name="category" // Re-using category field for target account
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>To Account</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger disabled={transferAccounts.length === 0}>
+                                        <SelectValue placeholder="Select target account" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {transferAccounts.map(acc => (
+                                        <SelectItem key={acc.id} value={acc.name}>{acc.name}</SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    ) : (
+                         <FormField
                             control={form.control}
                             name="category"
                             render={({ field }) => (
@@ -304,7 +363,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                             )}
                         />
                     )}
-                    </div>
+
                     {transactionType === 'expense' && (
                     <FormField
                         control={form.control}
@@ -348,5 +407,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
     </Dialog>
   );
 }
+
+    
 
     
