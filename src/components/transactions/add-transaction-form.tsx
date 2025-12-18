@@ -36,12 +36,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Transaction, Category, Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Description is required.'),
@@ -148,7 +149,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md grid-rows-[auto,1fr,auto] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Add Transaction</DialogTitle>
           <DialogDescription>
@@ -156,185 +157,189 @@ export default function AddTransactionForm({ transaction, children, onTransactio
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-             <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Groceries" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Amount</FormLabel>
-                    <FormControl>
-                        <Input type="number" placeholder="0.00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Date</FormLabel>
-                      <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              type="button"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal h-10",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent 
-                          className="w-auto p-0" 
-                          align="start"
-                          onOpenAutoFocus={(e) => e.preventDefault()}
-                          onPointerDownOutside={(e) => e.preventDefault()}
-                        >
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={(date) => {
-                              field.onChange(date);
-                              setIsCalendarOpen(false);
-                            }}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-            </div>
-            <FormField
-              control={form.control}
-              name="accountId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Account</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an account" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {accounts?.map(account => (
-                          <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-             <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); form.setValue('category', ''); }} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a transaction type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
-                      <SelectItem value="investment">Investment</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {transactionType && transactionType !== 'transfer' && (
-                 <FormField
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
+             <ScrollArea className="pr-6 -mr-6">
+                <div className="space-y-3">
+                    <FormField
                     control={form.control}
-                    name="category"
+                    name="description"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Category</FormLabel>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., Groceries" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <FormField
+                        control={form.control}
+                        name="amount"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Amount</FormLabel>
+                            <FormControl>
+                                <Input type="number" placeholder="0.00" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                            <FormLabel>Date</FormLabel>
+                            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
+                                <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button
+                                    variant={"outline"}
+                                    type="button"
+                                    className={cn(
+                                        "w-full pl-3 text-left font-normal h-10",
+                                        !field.value && "text-muted-foreground"
+                                    )}
+                                    >
+                                    {field.value ? (
+                                        format(field.value, "PPP")
+                                    ) : (
+                                        <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent 
+                                className="w-auto p-0" 
+                                align="start"
+                                onOpenAutoFocus={(e) => e.preventDefault()}
+                                onPointerDownOutside={(e) => e.preventDefault()}
+                                >
+                                <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={(date) => {
+                                    field.onChange(date);
+                                    setIsCalendarOpen(false);
+                                    }}
+                                    initialFocus
+                                />
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </div>
+                    <FormField
+                    control={form.control}
+                    name="accountId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Account</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                            <SelectTrigger disabled={!transactionType || filteredCategories.length === 0}>
-                                <SelectValue placeholder="Select a category" />
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select an account" />
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {filteredCategories.map(cat => (
-                                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                            {accounts?.map(account => (
+                                <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
                             ))}
                             </SelectContent>
                         </Select>
                         <FormMessage />
                         </FormItem>
                     )}
-                />
-            )}
-            </div>
-             {transactionType === 'expense' && (
-              <FormField
-                control={form.control}
-                name="expenseType"
-                render={({ field }) => (
-                  <FormItem className="space-y-2">
-                    <FormLabel>Is this a need or a want?</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex items-center space-x-4"
-                      >
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="need" />
-                          </FormControl>
-                          <FormLabel className="font-normal">Need</FormLabel>
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <Select onValueChange={(value) => { field.onChange(value); form.setValue('category', ''); }} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a transaction type" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            <SelectItem value="income">Income</SelectItem>
+                            <SelectItem value="expense">Expense</SelectItem>
+                            <SelectItem value="investment">Investment</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
                         </FormItem>
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <RadioGroupItem value="want" />
-                          </FormControl>
-                          <FormLabel className="font-normal">Want</FormLabel>
+                    )}
+                    />
+                    {transactionType && transactionType !== 'transfer' && (
+                        <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Category</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger disabled={!transactionType || filteredCategories.length === 0}>
+                                        <SelectValue placeholder="Select a category" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {filteredCategories.map(cat => (
+                                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+                    </div>
+                    {transactionType === 'expense' && (
+                    <FormField
+                        control={form.control}
+                        name="expenseType"
+                        render={({ field }) => (
+                        <FormItem className="space-y-2">
+                            <FormLabel>Is this a need or a want?</FormLabel>
+                            <FormControl>
+                            <RadioGroup
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                className="flex items-center space-x-4"
+                            >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                    <RadioGroupItem value="need" />
+                                </FormControl>
+                                <FormLabel className="font-normal">Need</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                <FormControl>
+                                    <RadioGroupItem value="want" />
+                                </FormControl>
+                                <FormLabel className="font-normal">Want</FormLabel>
+                                </FormItem>
+                            </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
                         </FormItem>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            <DialogFooter className="pt-4">
+                        )}
+                    />
+                    )}
+                </div>
+            </ScrollArea>
+            <DialogFooter className="pt-4 mt-auto">
               <Button type="submit">Add Transaction</Button>
             </DialogFooter>
           </form>
