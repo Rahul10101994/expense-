@@ -25,10 +25,15 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import AddTransactionForm from '../transactions/add-transaction-form';
+import { isSameMonth } from 'date-fns';
 
 export default function RecentTransactions({ transactions, onTransactionAdded }: { transactions: Transaction[], onTransactionAdded?: () => void }) {
     const recentTransactions = useMemo(() => {
-        return [...transactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+        const now = new Date();
+        return [...transactions]
+          .filter(t => isSameMonth(new Date(t.date), now))
+          .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 10);
     }, [transactions]);
     
     const formatCurrency = (amount: number) => {
