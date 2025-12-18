@@ -41,7 +41,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
       if (t.type === 'income') {
         income += t.amount;
       } else if (t.type === 'expense') {
-        expenses += t.amount;
+        expenses += Math.abs(t.amount);
       }
     });
 
@@ -95,7 +95,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
                     </div>
                     <div>
                         <div className="text-muted-foreground">Expenses</div>
-                        <div className="font-medium text-red-500">{formatCurrency(Math.abs(expenses))}</div>
+                        <div className="font-medium text-red-500">{formatCurrency(expenses)}</div>
                     </div>
                 </div>
             </CardContent>
