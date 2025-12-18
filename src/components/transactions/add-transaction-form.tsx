@@ -148,7 +148,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Transaction</DialogTitle>
           <DialogDescription>
@@ -170,7 +170,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormField
                 control={form.control}
                 name="amount"
@@ -254,7 +254,7 @@ export default function AddTransactionForm({ transaction, children, onTransactio
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
              <FormField
               control={form.control}
               name="type"
