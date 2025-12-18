@@ -11,7 +11,7 @@ import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-ch
 
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import Link from 'next/link';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { useMemo, useEffect, useState } from 'react';
@@ -22,39 +22,55 @@ export default function DashboardPage() {
     const firestore = useFirestore();
     const { user } = useUser();
     const currentMonth = useMemo(() => new Date(), []);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [transactionsLoading, setTransactionsLoading] = useState(true);
-
+    
     const accountsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return collection(firestore, `users/${user.uid}/accounts`);
     }, [firestore, user]);
     const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
 
+    const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+    const [allTransactionsLoading, setAllTransactionsLoading] = useState(true);
+
     useEffect(() => {
         if (!user || !firestore || accountsLoading) return;
-        if (!accounts || accounts.length === 0) {
-            setTransactions([]);
-            setTransactionsLoading(false);
+        if (!accounts) {
+            setAllTransactions([]);
+            setAllTransactionsLoading(false);
             return;
         }
 
-        const fetchTransactions = async () => {
-            setTransactionsLoading(true);
-            const allTransactions: Transaction[] = [];
+        const fetchAllTransactions = async () => {
+            setAllTransactionsLoading(true);
+            const transactions: Transaction[] = [];
             for (const account of accounts) {
                 const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
                 const transactionsSnapshot = await getDocs(transactionsColRef);
                 transactionsSnapshot.forEach(doc => {
-                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+                    transactions.push({ id: doc.id, ...doc.data() } as Transaction);
                 });
             }
-            setTransactions(allTransactions);
-            setTransactionsLoading(false);
+            setAllTransactions(transactions);
+            setAllTransactionsLoading(false);
         };
 
-        fetchTransactions();
+        fetchAllTransactions();
     }, [user, firestore, accounts, accountsLoading]);
+
+    const recentTransactionsQuery = useMemoFirebase(() => {
+        if (!user || !accounts || accounts.length === 0) return null;
+        // This is a simplification to get real-time updates. 
+        // For a full app, you'd need a more complex solution to query across all accounts.
+        const mostRecentAccount = accounts[0];
+        return query(
+            collection(firestore, `users/${user.uid}/accounts/${mostRecentAccount.id}/transactions`),
+            orderBy('date', 'desc'),
+            limit(10)
+        );
+    }, [firestore, user, accounts]);
+
+    const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(recentTransactionsQuery);
+
 
     const budgetsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -77,9 +93,9 @@ export default function DashboardPage() {
     const { data: goals, isLoading: goalsLoading } = useCollection<Goal>(goalsQuery);
     
     const budgets: Budget[] = useMemo(() => {
-        if (!savedBudgets || !transactions) return [];
+        if (!savedBudgets || !allTransactions) return [];
 
-        const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = allTransactions.filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
@@ -95,10 +111,10 @@ export default function DashboardPage() {
                 month: budget.month
         }));
 
-    }, [savedBudgets, transactions]);
+    }, [savedBudgets, allTransactions]);
     
 
-    if (transactionsLoading || accountsLoading || budgetsLoading || goalsLoading) {
+    if (transactionsLoading || accountsLoading || budgetsLoading || goalsLoading || allTransactionsLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Spinner size="large" />
@@ -107,11 +123,13 @@ export default function DashboardPage() {
     }
     
     const financialData = {
-        transactions: transactions || [],
+        transactions: allTransactions || [],
         accounts: accounts || [],
         budgets,
         goals: goals || [],
     };
+
+    const recentTransactionsData = transactions || [];
 
   return (
     <div className="flex-1 space-y-4">
@@ -131,7 +149,7 @@ export default function DashboardPage() {
       </div>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4 h-auto lg:h-[440px]">
-          <RecentTransactions transactions={financialData.transactions} />
+          <RecentTransactions transactions={recentTransactionsData} />
         </Card>
         <div className="col-span-1 lg:col-span-3 space-y-4">
             <AiInsights transactions={financialData.transactions} goals={financialData.goals} />

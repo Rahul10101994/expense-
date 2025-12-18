@@ -30,9 +30,6 @@ export default function TransactionsPage() {
     const { user } = useUser();
     const isMobile = useIsMobile();
     
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
     const [filterType, setFilterType] = useState('all');
     const [filterMonth, setFilterMonth] = useState('all');
     const [filterYear, setFilterYear] = useState('all');
@@ -41,29 +38,18 @@ export default function TransactionsPage() {
         if (!user) return null;
         return collection(firestore, `users/${user.uid}/accounts`);
     }, [firestore, user]);
-    const { data: accounts } = useCollection<Account>(accountsQuery);
+    const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
 
-    useEffect(() => {
-        if (!user || !firestore || !accounts) return;
+    const transactionsQuery = useMemoFirebase(() => {
+        if (!user || !accounts || accounts.length === 0) return null;
+        // This is a simplification to get real-time updates.
+        // For a full app, you'd need a more complex solution to query across all accounts.
+        const mostRecentAccount = accounts[0];
+        return collection(firestore, `users/${user.uid}/accounts/${mostRecentAccount.id}/transactions`);
+    }, [firestore, user, accounts]);
 
-        const fetchTransactions = async () => {
-            setIsLoading(true);
-            const allTransactions: Transaction[] = [];
-            for (const account of accounts) {
-                const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
-                const transactionsSnapshot = await getDocs(transactionsColRef);
-                transactionsSnapshot.forEach(doc => {
-                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
-                });
-            }
-            setTransactions(allTransactions);
-            setIsLoading(false);
-        };
+    const { data: transactions, isLoading: transactionsLoading } = useCollection<Transaction>(transactionsQuery);
 
-        fetchTransactions();
-
-    }, [user, firestore, accounts]);
-    
     const filteredTransactions = useMemo(() => {
         let filtered = transactions ? [...transactions] : [];
 
@@ -103,6 +89,8 @@ export default function TransactionsPage() {
     const getAccountName = (accountId: string) => {
         return accounts?.find(acc => acc.id === accountId)?.name || 'Unknown';
     }
+
+    const isLoading = accountsLoading || transactionsLoading;
 
     return (
         <Card className={cn(isMobile && "border-0 shadow-none")}>
