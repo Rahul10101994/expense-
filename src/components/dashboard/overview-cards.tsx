@@ -49,6 +49,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
   }, [filteredTransactions]);
 
   const totalBalance = useMemo(() => {
+    if (!accounts) return 0;
     return accounts.reduce((acc, account) => acc + account.balance, 0);
   }, [accounts]);
   
