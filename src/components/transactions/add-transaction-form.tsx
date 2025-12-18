@@ -104,21 +104,29 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
       date: values.date.toISOString(),
     };
     
-    try {
-        const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${selectedAccount.id}/transactions`);
-        addDocumentNonBlocking(transactionCollectionRef, transactionData);
-
-        toast({ title: 'Success', description: 'Transaction added' });
-        setOpen(false);
-        onTransactionAdded?.();
-    } catch (error) {
-        console.error("Error adding transaction: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not add transaction.',
-        });
+    const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${selectedAccount.id}/transactions`);
+    addDocumentNonBlocking(transactionCollectionRef, transactionData);
+    
+    if (values.type === 'transfer') {
+        const toAccount = accounts.find(acc => acc.name === values.category);
+        if(toAccount) {
+            const transferTransactionData: Omit<Transaction, 'id' | 'userId'> = {
+              ...values,
+              accountId: toAccount.id,
+              category: 'Transfer',
+              amount: Math.abs(values.amount),
+              description: `Transfer from ${selectedAccount.name}`,
+              type: 'income', // Treat as income for the receiving account
+            };
+            const toTransactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${toAccount.id}/transactions`);
+            addDocumentNonBlocking(toTransactionCollectionRef, transferTransactionData);
+        }
     }
+    
+    toast({ title: 'Success', description: 'Transaction added' });
+    setOpen(false);
+    form.reset({ description: '', amount: 0, accountId: '', type: 'expense', category: '' });
+    onTransactionAdded?.();
   }
   
   const handleOpenChange = (isOpen: boolean) => {
