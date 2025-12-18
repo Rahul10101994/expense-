@@ -98,11 +98,17 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
     }
 
     const transactionData: Omit<Transaction, 'id'| 'userId'> = {
-      ...values,
-      category,
+      description: values.description,
       amount: values.type === 'expense' ? -Math.abs(values.amount) : Math.abs(values.amount),
+      accountId: values.accountId,
+      type: values.type,
+      category,
       date: values.date.toISOString(),
     };
+
+    if (values.type === 'expense' && values.expenseType) {
+        transactionData.expenseType = values.expenseType;
+    }
     
     const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${selectedAccount.id}/transactions`);
     addDocumentNonBlocking(transactionCollectionRef, transactionData);
@@ -111,12 +117,12 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
         const toAccount = accounts.find(acc => acc.name === values.category);
         if(toAccount) {
             const transferTransactionData: Omit<Transaction, 'id' | 'userId'> = {
-              ...values,
               accountId: toAccount.id,
               category: 'Transfer',
               amount: Math.abs(values.amount),
               description: `Transfer from ${selectedAccount.name}`,
               type: 'income', // Treat as income for the receiving account
+              date: values.date.toISOString()
             };
             const toTransactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${toAccount.id}/transactions`);
             addDocumentNonBlocking(toTransactionCollectionRef, transferTransactionData);
