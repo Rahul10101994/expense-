@@ -31,8 +31,8 @@ import { Edit, Trash2 } from 'lucide-react';
 
 type ManageTransactionDialogProps = {
   transaction: Transaction;
-  onTransactionUpdate: (updatedTransaction: Transaction) => void;
-  onTransactionDelete: (deletedTransactionId: string) => void;
+  onTransactionUpdate: () => void;
+  onTransactionDelete: () => void;
 };
 
 export default function ManageTransactionDialog({ transaction, onTransactionUpdate, onTransactionDelete }: ManageTransactionDialogProps) {
@@ -48,16 +48,12 @@ export default function ManageTransactionDialog({ transaction, onTransactionUpda
     try {
         const batch = writeBatch(firestore);
         const transactionRef = doc(firestore, `users/${user.uid}/accounts/${transaction.accountId}/transactions`, transaction.id);
-        const accountRef = doc(firestore, `users/${user.uid}/accounts`, transaction.accountId);
-
-        // Revert balance change
-        // If it was income (positive), we subtract. If it was expense (negative), we add it back.
-        batch.update(accountRef, { balance: -transaction.amount });
+        
         batch.delete(transactionRef);
         
         await batch.commit();
 
-        onTransactionDelete(transaction.id);
+        onTransactionDelete();
         toast({ title: 'Transaction Deleted', description: 'The transaction has been successfully deleted.' });
         setOpen(false);
     } catch (error) {
@@ -74,30 +70,30 @@ export default function ManageTransactionDialog({ transaction, onTransactionUpda
     }
   }
 
+  const handleTransactionUpdated = () => {
+      onTransactionUpdate();
+      handleOpenChange(false);
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm">Manage</Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{showEdit ? 'Edit Transaction' : 'Manage Transaction'}</DialogTitle>
-          <DialogDescription>
-            {showEdit ? 'Update the details of your transaction.' : `What would you like to do with this transaction?`}
-          </DialogDescription>
-        </DialogHeader>
-
+      <DialogContent className="p-0 max-w-md">
         {showEdit ? (
             <AddTransactionForm
                 transactionToEdit={transaction}
-                onAddTransaction={(t) => {
-                    // This is a bit of a workaround as the form is for adding
-                    // But we can treat it as an update here.
-                    onTransactionUpdate({ ...t, id: transaction.id });
-                    handleOpenChange(false);
-                }}
+                onTransactionAdded={handleTransactionUpdated}
             />
         ) : (
+            <>
+            <DialogHeader className="p-6 pb-0">
+                <DialogTitle>Manage Transaction</DialogTitle>
+                <DialogDescription>
+                    What would you like to do with this transaction?
+                </DialogDescription>
+            </DialogHeader>
             <div className="flex justify-around py-8">
                 <Button variant="outline" size="lg" onClick={() => setShowEdit(true)}>
                     <Edit className="mr-2 h-4 w-4" />
@@ -114,8 +110,7 @@ export default function ManageTransactionDialog({ transaction, onTransactionUpda
                         <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the transaction
-                            and update the account balance.
+                            This action cannot be undone. This will permanently delete the transaction.
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -125,6 +120,7 @@ export default function ManageTransactionDialog({ transaction, onTransactionUpda
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
+            </>
         )}
       </DialogContent>
     </Dialog>
