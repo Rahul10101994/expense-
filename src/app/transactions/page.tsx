@@ -202,19 +202,22 @@ export default function TransactionsPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Description</TableHead>
-                            {!accountIdFilter && <TableHead>Account</TableHead>}
-                            <TableHead>Date</TableHead>
+                            {!isMobile && !accountIdFilter && <TableHead>Account</TableHead>}
+                            {!isMobile && <TableHead>Date</TableHead>}
                             <TableHead>Category</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead className="w-[50px] text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredTransactions.map((transaction) => (
                             <TableRow key={transaction.id}>
-                                <TableCell className="font-medium">{transaction.description}</TableCell>
-                                {!accountIdFilter && <TableCell className="text-muted-foreground">{getAccountName(transaction.accountId)}</TableCell>}
-                                <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                                <TableCell className="font-medium">
+                                    {transaction.description}
+                                    {isMobile && <div className="text-xs text-muted-foreground">{new Date(transaction.date).toLocaleDateString()}</div>}
+                                </TableCell>
+                                {!isMobile && !accountIdFilter && <TableCell className="text-muted-foreground">{getAccountName(transaction.accountId)}</TableCell>}
+                                {!isMobile && <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>}
                                 <TableCell>
                                     <div className="flex items-center gap-2">
                                     <CategoryIcon category={transaction.category} className="h-4 w-4 text-muted-foreground"/>
@@ -253,5 +256,3 @@ export default function TransactionsPage() {
         </Card>
     );
 }
-
-    
