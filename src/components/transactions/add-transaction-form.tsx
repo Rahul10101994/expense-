@@ -40,19 +40,20 @@ import type { Transaction, Category, Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { TransactionType } from '@/lib/types';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Required'),
   amount: z.coerce.number().refine(val => val !== 0, 'Required'),
   accountId: z.string().min(1, 'Required'),
-  type: z.enum(['income', 'expense', 'investment', 'transfer']),
+  type: z.enum(['income', 'expense', 'investment', 'transfer', 'reconciliation']),
   category: z.string(),
   date: z.date({ required_error: "Required" }),
   expenseType: z.enum(['need', 'want']).optional(),
 }).refine(data => data.type !== 'expense' || !!data.expenseType, {
   message: 'Classify expense',
   path: ['expenseType'],
-}).refine(data => data.type === 'income' || data.type === 'transfer' || (data.category && data.category.length > 0), {
+}).refine(data => ['income', 'transfer', 'reconciliation'].includes(data.type) || (data.category && data.category.length > 0), {
     message: 'Required',
     path: ['category'],
 });
@@ -76,7 +77,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
         ...transactionToEdit,
         amount: Math.abs(transactionToEdit.amount),
         date: new Date(transactionToEdit.date),
-        type: transactionToEdit.type as 'income' | 'expense' | 'investment' | 'transfer',
+        type: transactionToEdit.type as 'income' | 'expense' | 'investment' | 'transfer' | 'reconciliation',
         category: transactionToEdit.category || '',
     } : { description: '', amount: 0, accountId: '', type: 'expense', category: '' },
   });
@@ -99,24 +100,26 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
     if (!selectedAccount) return;
 
     let category = values.category;
-    if (values.type === 'income') {
+    if (values.type === TransactionType.Income) {
         category = 'Income';
-    } else if (values.type === 'transfer') {
+    } else if (values.type === TransactionType.Transfer) {
         category = 'Transfer';
+    } else if (values.type === TransactionType.Reconciliation) {
+        category = 'Reconciliation';
     }
     
-    const amount = values.type === 'income' ? Math.abs(values.amount) : -Math.abs(values.amount);
+    const amount = [TransactionType.Income, TransactionType.Reconciliation].includes(values.type) ? Math.abs(values.amount) : -Math.abs(values.amount);
 
     const transactionData: Omit<Transaction, 'id' | 'userId'> = {
       description: values.description,
       amount: amount,
       accountId: values.accountId,
       type: values.type,
-      category,
+      category: category as Transaction['category'],
       date: values.date.toISOString(),
     };
 
-    if (values.type === 'expense' && values.expenseType) {
+    if (values.type === TransactionType.Expense && values.expenseType) {
         transactionData.expenseType = values.expenseType;
     }
 
@@ -131,7 +134,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
             addDocumentNonBlocking(transactionCollectionRef, transactionData);
         }
 
-        if (values.type === 'transfer') {
+        if (values.type === TransactionType.Transfer) {
             const toAccount = accounts.find(acc => acc.name === values.category);
             if(toAccount) {
                 const transferTransactionData: Omit<Transaction, 'id' | 'userId'> = {
@@ -139,7 +142,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
                   category: 'Transfer',
                   amount: Math.abs(values.amount),
                   description: `Transfer from ${selectedAccount.name}`,
-                  type: 'income',
+                  type: TransactionType.Income,
                   date: values.date.toISOString()
                 };
                 const toTransactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${toAccount.id}/transactions`);
@@ -352,5 +355,3 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
     </Dialog>
   );
 }
-
-    

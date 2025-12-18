@@ -1,11 +1,13 @@
 
-export type TransactionCategory = 'Income' | 'Food' | 'Shopping' | 'Housing' | 'Transportation' | 'Utilities' | 'Entertainment' | 'Health' | 'Investment' | 'Other' | 'Transfer';
+
+export type TransactionCategory = 'Income' | 'Food' | 'Shopping' | 'Housing' | 'Transportation' | 'Utilities' | 'Entertainment' | 'Health' | 'Investment' | 'Other' | 'Transfer' | 'Reconciliation';
 
 export enum TransactionType {
   Income = 'income',
   Expense = 'expense',
   Investment = 'investment',
-  Transfer = 'transfer'
+  Transfer = 'transfer',
+  Reconciliation = 'reconciliation'
 }
 
 export type Transaction = {

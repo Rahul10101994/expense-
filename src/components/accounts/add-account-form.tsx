@@ -36,6 +36,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, doc, addDoc, writeBatch } from 'firebase/firestore';
 import type { Account, Transaction } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { TransactionType } from '@/lib/types';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -73,8 +74,6 @@ export default function AddAccountForm({ onAccountAdded, children }: AddAccountF
       
       const newAccountRef = doc(collection(firestore, `users/${user.uid}/accounts`));
       
-      // The `balance` field on the account is for quick display, but is not the source of truth.
-      // The true balance is calculated from transactions.
       const newAccountData: Omit<Account, 'id'> = {
           name: values.name,
           type: values.type,
@@ -83,17 +82,16 @@ export default function AddAccountForm({ onAccountAdded, children }: AddAccountF
       };
       batch.set(newAccountRef, newAccountData);
 
-      // Create an initial transaction for the starting balance
       if (values.balance !== 0) {
         const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${newAccountRef.id}/transactions`);
         const newTransactionRef = doc(transactionCollectionRef);
         const initialTransaction: Omit<Transaction, 'id' | 'userId'> = {
           accountId: newAccountRef.id,
           amount: values.balance,
-          category: 'Income', // Initial balance is treated as income
+          category: 'Reconciliation',
           date: new Date().toISOString(),
           description: 'Initial Balance',
-          type: 'income',
+          type: TransactionType.Reconciliation,
         };
         batch.set(newTransactionRef, initialTransaction);
       }

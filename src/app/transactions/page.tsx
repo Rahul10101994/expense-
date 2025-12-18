@@ -26,6 +26,7 @@ import { PlusCircle, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams, useRouter } from 'next/navigation';
 import ManageTransactionDialog from '@/components/transactions/manage-transaction-dialog';
+import { TransactionType } from '@/lib/types';
 
 export default function TransactionsPage() {
     const firestore = useFirestore();
@@ -231,9 +232,9 @@ export default function TransactionsPage() {
                                 </TableCell>
                                 <TableCell className={cn(
                                     "text-right font-medium",
-                                    transaction.type === 'income' ? 'text-green-500' : 'text-foreground'
+                                    transaction.type === TransactionType.Income ? 'text-green-500' : 'text-foreground'
                                 )}>
-                                    {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.amount)}
+                                    {[TransactionType.Income, TransactionType.Reconciliation].includes(transaction.type) && transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <ManageTransactionDialog 

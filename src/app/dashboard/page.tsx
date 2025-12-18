@@ -16,6 +16,7 @@ import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { TransactionType } from '@/lib/types';
 
 
 export default function DashboardPage() {
@@ -58,8 +59,8 @@ export default function DashboardPage() {
             const currentBalance = accountTransactions.reduce((acc, t) => {
                 // For credit cards, expenses increase the balance (debt) and payments (income) decrease it.
                 if (account.type === 'credit') {
-                    if (t.type === 'expense') return acc + Math.abs(t.amount);
-                    if (t.type === 'income') return acc - Math.abs(t.amount); // Payments to card
+                    if (t.type === TransactionType.Expense) return acc + Math.abs(t.amount);
+                    if (t.type === TransactionType.Income) return acc - Math.abs(t.amount); // Payments to card
                 }
                 // For other accounts, income increases balance, expenses decrease it.
                 return acc + t.amount;
@@ -97,7 +98,7 @@ export default function DashboardPage() {
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets || !transactions) return [];
 
-        const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = transactions.filter(t => t.type === TransactionType.Expense).reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
@@ -158,5 +159,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

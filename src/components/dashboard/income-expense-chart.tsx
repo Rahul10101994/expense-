@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
@@ -5,6 +6,7 @@ import { CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import type { Transaction } from '@/lib/types';
 import { useMemo } from 'react';
+import { TransactionType } from '@/lib/types';
 
 const chartConfig = {
   income: {
@@ -30,11 +32,11 @@ export default function IncomeExpenseChart({ transactions }: { transactions: Tra
       if (!dataByDay[day]) {
         dataByDay[day] = { date: day, income: 0, expenses: 0, investments: 0 };
       }
-      if (t.type === 'income') {
+      if (t.type === TransactionType.Income) {
         dataByDay[day].income += t.amount;
-      } else if (t.type === 'expense') {
+      } else if (t.type === TransactionType.Expense) {
         dataByDay[day].expenses += Math.abs(t.amount);
-      } else if (t.type === 'investment') {
+      } else if (t.type === TransactionType.Investment) {
         dataByDay[day].investments += Math.abs(t.amount);
       }
     });

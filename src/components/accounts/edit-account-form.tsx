@@ -47,6 +47,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { collection, doc, writeBatch, getDocs, addDoc } from 'firebase/firestore';
 import type { Account } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { TransactionType } from '@/lib/types';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -97,10 +98,10 @@ export default function EditAccountForm({ account, onAccountChanged, children }:
         const adjustmentTransaction = {
           accountId: account.id,
           amount: balanceDifference,
-          category: balanceDifference > 0 ? 'Income' : 'Expense',
+          category: 'Reconciliation',
           date: new Date().toISOString(),
           description: 'Balance Adjustment',
-          type: balanceDifference > 0 ? 'income' : 'expense',
+          type: TransactionType.Reconciliation,
         };
         const newTransactionRef = doc(transactionCollectionRef);
         batch.set(newTransactionRef, adjustmentTransaction);
