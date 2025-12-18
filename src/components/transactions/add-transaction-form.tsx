@@ -34,6 +34,7 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { Transaction, Category, Account } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -83,7 +84,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
     accounts?.filter(acc => acc.id !== form.getValues('accountId')) || [], 
   [accounts, form.watch('accountId')]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user || !accounts) return;
 
     const selectedAccount = accounts.find(acc => acc.id === values.accountId);
@@ -104,7 +105,8 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
     };
     
     try {
-        await addDoc(collection(firestore, `users/${user.uid}/accounts/${selectedAccount.id}/transactions`), transactionData);
+        const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${selectedAccount.id}/transactions`);
+        addDocumentNonBlocking(transactionCollectionRef, transactionData);
 
         toast({ title: 'Success', description: 'Transaction added' });
         setOpen(false);
@@ -129,7 +131,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[425px] max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>New Transaction</DialogTitle>
         </DialogHeader>
@@ -159,12 +161,12 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="description"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="md:col-span-2">
                         <FormLabel className="text-xs">Description</FormLabel>
                         <FormControl><Input placeholder="e.g. Coffee" className="h-10" {...field} /></FormControl>
                         <FormMessage className="text-[10px]" />
@@ -209,7 +211,6 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
         <PopoverContent 
           className="w-auto p-0" 
           align="start" 
-          // This prevents the dialog from stealing focus back too early
           onCloseAutoFocus={(e) => e.preventDefault()} 
         >
           <Calendar
@@ -237,7 +238,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
                     control={form.control}
                     name="accountId"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="md:col-span-2">
                         <FormLabel className="text-xs">{transactionType === 'transfer' ? 'From' : 'Account'}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger className="h-10"><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
@@ -253,7 +254,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
                       control={form.control}
                       name="category"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-2">
                           <FormLabel className="text-xs">To Account</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger className="h-10"><SelectValue placeholder="Target Account" /></SelectTrigger></FormControl>
@@ -270,7 +271,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
                       control={form.control}
                       name="category"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-2">
                           <FormLabel className="text-xs">Category</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger className="h-10"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
@@ -287,7 +288,7 @@ export default function AddTransactionForm({ children, onTransactionAdded }: { c
                       control={form.control}
                       name="expenseType"
                       render={({ field }) => (
-                        <FormItem className="space-y-3">
+                        <FormItem className="space-y-3 md:col-span-2">
                           <FormLabel className="text-xs">Classification</FormLabel>
                           <FormControl>
                             <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
