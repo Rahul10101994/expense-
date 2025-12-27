@@ -29,7 +29,7 @@ import {
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, doc, deleteDoc, addDoc, getDocs, writeBatch, query, where } from 'firebase/firestore';
 import type { Transaction, Category, Account, Budget, Goal } from '@/lib/types';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { isSameMonth, isSameYear, getYear, getMonth, format, startOfMonth, endOfMonth } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -50,13 +50,38 @@ export default function SettingsPage() {
     const [newCategory, setNewCategory] = useState('');
     const [isClearing, setIsClearing] = useState(false);
     const [clearScope, setClearScope] = useState<ClearScope>('all');
+    
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const transactionsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return collection(firestore, `users/${user.uid}/accounts/default/transactions`);
-    }, [firestore, user]);
+    const fetchAllData = useCallback(async () => {
+        if (!user || !firestore) {
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true);
 
-    const { data: transactions } = useCollection<Transaction>(transactionsQuery);
+        const fetchedAccounts: Account[] = [];
+        const accountsSnapshot = await getDocs(collection(firestore, `users/${user.uid}/accounts`));
+        accountsSnapshot.forEach(doc => {
+            fetchedAccounts.push({ id: doc.id, ...doc.data() } as Account);
+        });
+        
+        const fetchedTransactions: Transaction[] = [];
+        for (const account of fetchedAccounts) {
+            const transactionsColRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
+            const transactionsSnapshot = await getDocs(transactionsColRef);
+            transactionsSnapshot.forEach(doc => {
+                fetchedTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+            });
+        }
+        setTransactions(fetchedTransactions);
+        setIsLoading(false);
+    }, [user, firestore]);
+
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
 
     const categoriesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -216,6 +241,14 @@ export default function SettingsPage() {
             return "This action cannot be undone. This will permanently delete all your accounts, transactions, budgets, goals, and categories from our servers.";
         }
         return `This action cannot be undone. This will permanently delete all transactions for ${getReportTitle()}. Other data will not be affected.`;
+    }
+
+    if (isLoading || categoriesLoading) {
+        return (
+            <div className="flex h-64 w-full items-center justify-center">
+                <Spinner size="large" />
+            </div>
+        )
     }
 
     return (
@@ -439,4 +472,5 @@ export default function SettingsPage() {
             </Card>
         </div>
     );
-}
+
+  
