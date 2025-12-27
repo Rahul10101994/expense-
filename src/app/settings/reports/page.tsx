@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import NeedsWantsChart from '@/components/dashboard/needs-wants-chart';
+import { TransactionType } from '@/lib/types';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 
@@ -133,9 +134,9 @@ export default function ReportsPage() {
         let income = 0;
         let expenses = 0;
         transactions.forEach(t => {
-            if (t.type === 'income') {
+            if (t.type === TransactionType.Income && t.category !== 'Transfer') {
                 income += t.amount;
-            } else if (t.type === 'expense') {
+            } else if (t.type === TransactionType.Expense) {
                 expenses += Math.abs(t.amount);
             }
         });

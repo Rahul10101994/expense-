@@ -15,6 +15,7 @@ import { useUser } from '@/firebase';
 import { isSameMonth, isSameYear } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { TransactionType } from '@/lib/types';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall';
 
@@ -38,9 +39,9 @@ export default function OverviewCards({ transactions, accounts }: { transactions
     let expenses = 0;
 
     filteredTransactions.forEach(t => {
-      if (t.type === 'income') {
+      if (t.type === TransactionType.Income && t.category !== 'Transfer') {
         income += t.amount;
-      } else if (t.type === 'expense') {
+      } else if (t.type === TransactionType.Expense) {
         expenses += Math.abs(t.amount);
       }
     });
