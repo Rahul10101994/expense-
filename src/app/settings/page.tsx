@@ -472,5 +472,4 @@ export default function SettingsPage() {
             </Card>
         </div>
     );
-
-  
+}
