@@ -123,7 +123,7 @@ export default function SettingsPage() {
 
         for (const transaction of filteredTransactions) {
             const values = [
-                new Date(transaction.date).toLocaleDateString(),
+                format(new Date(transaction.date), 'dd-MM-yyyy'),
                 transaction.type,
                 transaction.amount,
                 transaction.category,
