@@ -332,6 +332,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
                           <FormMessage className="text-[10px]" />
                         </FormItem>
                       )}
+                  />
                   )}
 
                   {transactionType === 'expense' && (
