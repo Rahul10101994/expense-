@@ -182,7 +182,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
               <div className="space-y-4 pb-4">
                 {/* Type Switcher */}
                 <div className="flex p-1 bg-muted rounded-md w-full">
-                    {['expense', 'income', 'transfer'].map((t) => (
+                    {['expense', 'income', 'investment', 'transfer'].map((t) => (
                     <button
                         key={t}
                         type="button"
