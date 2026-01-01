@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -95,7 +94,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
                 </div>
                 <div className="w-1/3 flex flex-col justify-center">
                      <ul className="grid gap-1 text-xs">
-                        {spendingByCategory.map((entry, index) => {
+                        {spendingByCategory.slice(0, 5).map((entry, index) => {
                             const percentage = totalExpenses > 0 ? (entry.value / totalExpenses * 100).toFixed(0) : 0;
                             return (
                                 <li key={entry.name} className="flex items-center justify-between gap-2">
