@@ -6,7 +6,7 @@ import IncomeExpenseChart from '@/components/dashboard/income-expense-chart';
 import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { Transaction, Budget, TransactionCategory, Account } from '@/lib/types';
+import type { Transaction, Budget, Category, Account } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
 import { startOfMonth, endOfMonth, getYear, getMonth, format } from 'date-fns';
@@ -331,5 +331,3 @@ export default function ReportsPage() {
         </div>
     );
 }
-
-    
