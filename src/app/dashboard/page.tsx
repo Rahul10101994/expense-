@@ -143,7 +143,7 @@ export default function DashboardPage() {
         <OverviewCards transactions={financialData.transactions} accounts={financialData.accounts} />
       </div>
        <Link href="/budgets" className="mt-4 block">
-          <BudgetGoals budgets={financialData.budgets} />
+          <BudgetGoals budgets={budgets} />
       </Link>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-5">
