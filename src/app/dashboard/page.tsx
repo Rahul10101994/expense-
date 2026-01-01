@@ -15,7 +15,7 @@ import { collection, query, where, getDocs, orderBy, limit } from 'firebase/fire
 import type { Transaction, Budget, Goal, Account } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { useMemo, useEffect, useState, useCallback } from 'react';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { TransactionType } from '@/lib/types';
 
 
@@ -98,7 +98,9 @@ export default function DashboardPage() {
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets || !transactions) return [];
 
-        const spendingByCategory = transactions.filter(t => t.type === TransactionType.Expense).reduce((acc, t) => {
+        const currentMonthTransactions = transactions.filter(t => isSameMonth(new Date(t.date), currentMonth));
+
+        const spendingByCategory = currentMonthTransactions.filter(t => t.type === TransactionType.Expense).reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
@@ -114,7 +116,7 @@ export default function DashboardPage() {
                 month: budget.month
         }));
 
-    }, [savedBudgets, transactions]);
+    }, [savedBudgets, transactions, currentMonth]);
     
 
     if (isLoading || budgetsLoading || goalsLoading) {
