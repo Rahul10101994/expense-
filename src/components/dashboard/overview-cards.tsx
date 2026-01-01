@@ -126,7 +126,14 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
                     </div>
                     <div>
                         <div className="text-muted-foreground">Investments</div>
-                        <div className="font-medium text-blue-500">{formatCurrency(investments)}</div>
+                        <div className="flex items-baseline gap-1">
+                            <div className="font-medium text-blue-500">{formatCurrency(investments)}</div>
+                            {period === 'currentMonth' && investmentBudget > 0 && (
+                                <div className="text-muted-foreground">
+                                    ({investmentProgress.toFixed(0)}%)
+                                </div>
+                            )}
+                        </div>
                         {period === 'currentMonth' && investmentBudget > 0 && <Progress value={investmentProgress} className="h-1 mt-1" />}
                     </div>
                     <div>
