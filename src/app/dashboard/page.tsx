@@ -22,7 +22,7 @@ import { TransactionType } from '@/lib/types';
 export default function DashboardPage() {
     const firestore = useFirestore();
     const { user } = useUser();
-    const currentMonth = new Date();
+    const currentMonth = useMemo(() => new Date(), []);
     
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -78,7 +78,7 @@ export default function DashboardPage() {
     }, [fetchAllData]);
 
     const budgetsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         const monthStart = startOfMonth(currentMonth).toISOString();
         return query(
             collection(firestore, `users/${user.uid}/budgets`),
