@@ -93,7 +93,7 @@ export default function RecentTransactions({ transactions, onTransactionAdded }:
                                         "text-right font-medium",
                                         transaction.type === 'income' ? 'text-green-500' : 'text-foreground'
                                     )}>
-                                        {transaction.type === TransactionType.Income ? '+' : '-'}{formatCurrency(transaction.amount)}
+                                        {transaction.type === TransactionType.Income ? '+' : ''}{formatCurrency(transaction.amount)}
                                     </TableCell>
                                 </TableRow>
                             ))}
