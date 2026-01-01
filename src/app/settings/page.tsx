@@ -45,6 +45,7 @@ function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void })
     const { user } = useUser();
     const { toast } = useToast();
     const [newCategory, setNewCategory] = useState('');
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
 
     const categoriesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -95,7 +96,7 @@ function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void })
     };
 
     return (
-        <Sheet>
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
                 <Button>Manage Categories</Button>
             </SheetTrigger>
@@ -113,7 +114,7 @@ function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void })
                             value={newCategory}
                             onChange={(e) => setNewCategory(e.target.value)}
                         />
-                        <Button onClick={handleAddCategory}><PlusCircle className="mr-2 h-4 w-4" /> Add Category</Button>
+                        <Button onClick={handleAddCategory}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
                     </div>
                     {categoriesLoading ? <div className="flex justify-center"><Spinner /></div> : (
                         <Table>
@@ -138,9 +139,25 @@ function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void })
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                             </EditCategoryForm>
-                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id, category.name)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete the "{category.name}" category and its associated budgets. This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteCategory(category.id, category.name)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </TableCell>
                                     </TableRow>
                                 ))}
