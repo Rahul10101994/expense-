@@ -35,19 +35,22 @@ export default function OverviewCards({ transactions, accounts }: { transactions
     return transactions;
   }, [transactions, period]);
 
-  const { income, expenses } = useMemo(() => {
+  const { income, expenses, investments } = useMemo(() => {
     let income = 0;
     let expenses = 0;
+    let investments = 0;
 
     filteredTransactions.forEach(t => {
       if (t.type === TransactionType.Income && t.category !== 'Transfer' && t.category !== 'Reconciliation') {
         income += t.amount;
       } else if (t.type === TransactionType.Expense) {
         expenses += t.amount;
+      } else if (t.type === TransactionType.Investment) {
+        investments += t.amount;
       }
     });
 
-    return { income, expenses };
+    return { income, expenses, investments };
   }, [filteredTransactions]);
 
   const totalBalance = useMemo(() => {
@@ -97,7 +100,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
         </CardHeader>
         <Link href={`/settings/reports?period=${period}`}>
             <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-3 gap-4 text-xs">
                     <div>
                         <div className="text-muted-foreground">Income</div>
                         <div className="font-medium text-green-500">{formatCurrency(income)}</div>
@@ -105,6 +108,10 @@ export default function OverviewCards({ transactions, accounts }: { transactions
                     <div>
                         <div className="text-muted-foreground">Expenses</div>
                         <div className="font-medium text-red-500">{formatCurrency(expenses)}</div>
+                    </div>
+                    <div>
+                        <div className="text-muted-foreground">Investments</div>
+                        <div className="font-medium text-blue-500">{formatCurrency(investments)}</div>
                     </div>
                 </div>
             </CardContent>
