@@ -28,7 +28,11 @@ export type PersonalizedInsightsOutput = z.infer<typeof PersonalizedInsightsOutp
 export async function getPersonalizedInsights(
   input: PersonalizedInsightsInput
 ): Promise<PersonalizedInsightsOutput> {
-  return personalizedInsightsFlow(input);
+  const result = await personalizedInsightsFlow(input);
+  if (!result) {
+    return { insights: "Sorry, I couldn't generate any insights at this time." };
+  }
+  return result;
 }
 
 const prompt = ai.definePrompt({
@@ -47,6 +51,13 @@ const prompt = ai.definePrompt({
   Speak directly to the user and keep it conversational.
   Do not include any calculations, just the final recommendation.
   End the response with a call to action.
+
+  Format your response as a JSON object conforming to the following schema:
+  ${"```json"}
+  {
+    "insights": "Your single paragraph of financial advice here."
+  }
+  ${"```"}
   `,
 });
 
@@ -58,6 +69,6 @@ const personalizedInsightsFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    return output;
   }
 );
