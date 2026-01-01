@@ -70,11 +70,11 @@ export default function BudgetPlannerPage() {
     if (!user || !firestore) return null;
     return query(
         collection(firestore, `users/${user.uid}/categories`),
-        where('type', '==', 'expense')
+        where('type', 'in', ['expense', 'investment'])
     );
   }, [firestore, user]);
 
-  const { data: expenseCategories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
+  const { data: budgetableCategories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
 
   const form = useForm<z.infer<typeof budgetFormSchema>>({
     resolver: zodResolver(budgetFormSchema),
@@ -87,10 +87,10 @@ export default function BudgetPlannerPage() {
   });
 
   useEffect(() => {
-    if (expenseCategories) {
-        form.setValue('categoryBudgets', expenseCategories.map(cat => ({ category: cat.name, amount: 0 })))
+    if (budgetableCategories) {
+        form.setValue('categoryBudgets', budgetableCategories.map(cat => ({ category: cat.name, amount: 0 })))
     }
-  }, [expenseCategories, form]);
+  }, [budgetableCategories, form]);
 
   const selectedMonth = form.watch('month');
   const totalBudget = form.watch('totalAmount');
@@ -107,14 +107,14 @@ export default function BudgetPlannerPage() {
   const { data: existingBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
   useEffect(() => {
-    if (budgetsLoading || !expenseCategories) {
+    if (budgetsLoading || !budgetableCategories) {
       return;
     }
   
     if (existingBudgets) {
       if (existingBudgets.length > 0) {
         const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
-        const categoryBudgets = expenseCategories.map(cat => {
+        const categoryBudgets = budgetableCategories.map(cat => {
           const existing = existingBudgets.find(b => b.categoryId === cat.name);
           return { category: cat.name, amount: existing?.amount || 0 };
         });
@@ -127,10 +127,10 @@ export default function BudgetPlannerPage() {
         });
       } else {
         // Only reset amounts, keep month and total amount if user was editing
-        form.setValue('categoryBudgets', expenseCategories.map(cat => ({ category: cat.name, amount: 0 })));
+        form.setValue('categoryBudgets', budgetableCategories.map(cat => ({ category: cat.name, amount: 0 })));
       }
     }
-  }, [existingBudgets, budgetsLoading, selectedMonth, form, expenseCategories]);
+  }, [existingBudgets, budgetsLoading, selectedMonth, form, budgetableCategories]);
 
 
   async function onSubmit(values: z.infer<typeof budgetFormSchema>) {
@@ -329,7 +329,7 @@ export default function BudgetPlannerPage() {
 
                  <ScrollArea className="h-[300px] pr-4">
                     <div className="space-y-2">
-                    {expenseCategories?.map((category, index) => (
+                    {budgetableCategories?.map((category, index) => (
                       <FormField
                         key={category.id}
                         control={form.control}
