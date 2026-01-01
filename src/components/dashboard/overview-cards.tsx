@@ -24,6 +24,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
   const [period, setPeriod] = useState<Period>('currentMonth');
 
   const filteredTransactions = useMemo(() => {
+    if (!transactions) return [];
     const now = new Date();
     if (period === 'currentMonth') {
       return transactions.filter(t => isSameMonth(new Date(t.date), now));
@@ -39,7 +40,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
     let expenses = 0;
 
     filteredTransactions.forEach(t => {
-      if (t.type === TransactionType.Income && t.category !== 'Transfer') {
+      if (t.type === TransactionType.Income && t.category !== 'Transfer' && t.category !== 'Reconciliation') {
         income += t.amount;
       } else if (t.type === TransactionType.Expense) {
         expenses += Math.abs(t.amount);
