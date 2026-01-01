@@ -101,7 +101,7 @@ export default function DashboardPage() {
     }, [transactions, currentMonth]);
 
     const budgets: Budget[] = useMemo(() => {
-        if (!savedBudgets || !transactions) return [];
+        if (!savedBudgets || !currentMonthTransactions) return [];
 
         const spendingByCategory = currentMonthTransactions.filter(t => t.type === TransactionType.Expense).reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
@@ -119,7 +119,7 @@ export default function DashboardPage() {
                 month: budget.month
         }));
 
-    }, [savedBudgets, transactions, currentMonth, currentMonthTransactions]);
+    }, [savedBudgets, currentMonthTransactions]);
     
 
     if (isLoading || budgetsLoading || goalsLoading) {
