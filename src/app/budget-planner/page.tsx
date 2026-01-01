@@ -41,6 +41,7 @@ import { Spinner } from '@/components/ui/spinner';
 import type { Budget, Category } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import AddCategoryForm from '@/components/categories/add-category-form';
+import { Separator } from '@/components/ui/separator';
 
 
 const categoryBudgetSchema = z.object({
@@ -76,6 +77,12 @@ export default function BudgetPlannerPage() {
 
   const { data: budgetableCategories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
 
+  const { expenseCategories, investmentCategories } = useMemo(() => {
+    const expenses = budgetableCategories?.filter(c => c.type === 'expense') || [];
+    const investments = budgetableCategories?.filter(c => c.type === 'investment') || [];
+    return { expenseCategories: expenses, investmentCategories: investments };
+  }, [budgetableCategories]);
+
   const form = useForm<z.infer<typeof budgetFormSchema>>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
@@ -88,9 +95,10 @@ export default function BudgetPlannerPage() {
 
   useEffect(() => {
     if (budgetableCategories) {
-        form.setValue('categoryBudgets', budgetableCategories.map(cat => ({ category: cat.name, amount: 0 })))
+        const sortedCategories = [...expenseCategories, ...investmentCategories];
+        form.setValue('categoryBudgets', sortedCategories.map(cat => ({ category: cat.name, amount: 0 })))
     }
-  }, [budgetableCategories, form]);
+  }, [budgetableCategories, expenseCategories, investmentCategories, form]);
 
   const selectedMonth = form.watch('month');
   const totalBudget = form.watch('totalAmount');
@@ -110,11 +118,13 @@ export default function BudgetPlannerPage() {
     if (budgetsLoading || !budgetableCategories) {
       return;
     }
-  
+    
+    const sortedCategories = [...expenseCategories, ...investmentCategories];
+
     if (existingBudgets) {
       if (existingBudgets.length > 0) {
         const total = existingBudgets.reduce((acc, b) => acc + (b.amount || 0), 0);
-        const categoryBudgets = budgetableCategories.map(cat => {
+        const categoryBudgets = sortedCategories.map(cat => {
           const existing = existingBudgets.find(b => b.categoryId === cat.name);
           return { category: cat.name, amount: existing?.amount || 0 };
         });
@@ -127,10 +137,10 @@ export default function BudgetPlannerPage() {
         });
       } else {
         // Only reset amounts, keep month and total amount if user was editing
-        form.setValue('categoryBudgets', budgetableCategories.map(cat => ({ category: cat.name, amount: 0 })));
+        form.setValue('categoryBudgets', sortedCategories.map(cat => ({ category: cat.name, amount: 0 })));
       }
     }
-  }, [existingBudgets, budgetsLoading, selectedMonth, form, budgetableCategories]);
+  }, [existingBudgets, budgetsLoading, selectedMonth, form, budgetableCategories, expenseCategories, investmentCategories]);
 
 
   async function onSubmit(values: z.infer<typeof budgetFormSchema>) {
@@ -227,6 +237,8 @@ export default function BudgetPlannerPage() {
           </div>
       )
   }
+
+  const allCategories = [...expenseCategories, ...investmentCategories];
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -326,39 +338,88 @@ export default function BudgetPlannerPage() {
                 <div className="flex justify-end">
                     <AddCategoryForm />
                 </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Expense Categories</h3>
+                  <ScrollArea className="h-[200px] pr-4 border rounded-md p-2">
+                      <div className="space-y-2">
+                      {expenseCategories.map((category) => {
+                        const index = allCategories.findIndex(c => c.id === category.id);
+                        return (
+                          <FormField
+                            key={category.id}
+                            control={form.control}
+                            name={`categoryBudgets.${index}.amount`}
+                            render={({ field: formField }) => (
+                              <FormItem>
+                                <div className="flex items-center justify-between">
+                                  <FormLabel>{category.name}</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="0.00"
+                                      className="w-32"
+                                      {...formField}
+                                      onChange={(e) => {
+                                          const value = e.target.value;
+                                          formField.onChange(value === '' ? 0 : parseFloat(value));
+                                      }}
+                                      value={formField.value || 0}
+                                    />
+                                  </FormControl>
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )
+                      })}
+                      {expenseCategories.length === 0 && <p className="text-center text-xs text-muted-foreground p-4">No expense categories found.</p>}
+                      </div>
+                  </ScrollArea>
+                </div>
 
-                 <ScrollArea className="h-[300px] pr-4">
-                    <div className="space-y-2">
-                    {budgetableCategories?.map((category, index) => (
-                      <FormField
-                        key={category.id}
-                        control={form.control}
-                        name={`categoryBudgets.${index}.amount`}
-                        render={({ field: formField }) => (
-                          <FormItem>
-                            <div className="flex items-center justify-between">
-                              <FormLabel>{category.name}</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="0.00"
-                                  className="w-32"
-                                  {...formField}
-                                  onChange={(e) => {
-                                      const value = e.target.value;
-                                      formField.onChange(value === '' ? 0 : parseFloat(value));
-                                  }}
-                                  value={formField.value || 0}
-                                />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    ))}
-                    </div>
-                </ScrollArea>
+                <Separator />
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Investment Categories</h3>
+                  <ScrollArea className="h-[200px] pr-4 border rounded-md p-2">
+                      <div className="space-y-2">
+                      {investmentCategories.map((category) => {
+                        const index = allCategories.findIndex(c => c.id === category.id);
+                        return (
+                          <FormField
+                            key={category.id}
+                            control={form.control}
+                            name={`categoryBudgets.${index}.amount`}
+                            render={({ field: formField }) => (
+                              <FormItem>
+                                <div className="flex items-center justify-between">
+                                  <FormLabel>{category.name}</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="0.00"
+                                      className="w-32"
+                                      {...formField}
+                                      onChange={(e) => {
+                                          const value = e.target.value;
+                                          formField.onChange(value === '' ? 0 : parseFloat(value));
+                                      }}
+                                      value={formField.value || 0}
+                                    />
+                                  </FormControl>
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )
+                      })}
+                      {investmentCategories.length === 0 && <p className="text-center text-xs text-muted-foreground p-4">No investment categories found.</p>}
+                      </div>
+                  </ScrollArea>
+                </div>
                 
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                     {isSubmitting ? 'Saving...' : 'Save Budget'}
@@ -370,3 +431,5 @@ export default function BudgetPlannerPage() {
     </div>
   );
 }
+
+    
