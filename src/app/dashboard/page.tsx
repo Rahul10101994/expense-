@@ -150,7 +150,7 @@ export default function DashboardPage() {
           <IncomeExpenseChart transactions={currentMonthTransactions} />
         </Card>
         <Card className="col-span-1 lg:col-span-2">
-          <SpendingBreakdownChart transactions={financialData.transactions} />
+          <SpendingBreakdownChart transactions={currentMonthTransactions} />
         </Card>
       </div>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
