@@ -77,7 +77,7 @@ export default function AddAccountForm({ onAccountAdded, children }: AddAccountF
       const newAccountData: Omit<Account, 'id'> = {
           name: values.name,
           type: values.type,
-          balance: values.balance,
+          balance: values.balance, // This will be immediately overwritten by transaction calculation
           userId: user.uid,
       };
       batch.set(newAccountRef, newAccountData);
@@ -87,11 +87,11 @@ export default function AddAccountForm({ onAccountAdded, children }: AddAccountF
         const newTransactionRef = doc(transactionCollectionRef);
         const initialTransaction: Omit<Transaction, 'id' | 'userId'> = {
           accountId: newAccountRef.id,
-          amount: values.balance,
+          amount: Math.abs(values.balance),
           category: 'Reconciliation',
           date: new Date().toISOString(),
           description: 'Initial Balance',
-          type: TransactionType.Reconciliation,
+          type: values.balance >= 0 ? TransactionType.Income : TransactionType.Expense,
         };
         batch.set(newTransactionRef, initialTransaction);
       }

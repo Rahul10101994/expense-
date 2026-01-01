@@ -45,7 +45,7 @@ import AddCategoryForm from '@/components/categories/add-category-form';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Required'),
-  amount: z.coerce.number().refine(val => val !== 0, 'Required'),
+  amount: z.coerce.number().positive('Amount must be positive').refine(val => val !== 0, 'Required'),
   accountId: z.string().min(1, 'Required'),
   type: z.enum(['income', 'expense', 'investment', 'transfer', 'reconciliation']),
   category: z.string(),
@@ -54,7 +54,7 @@ const formSchema = z.object({
 }).refine(data => data.type !== 'expense' || !!data.expenseType, {
   message: 'Classify expense',
   path: ['expenseType'],
-}).refine(data => ['income', 'transfer', 'reconciliation', 'investment'].includes(data.type) || (data.category && data.category.length > 0), {
+}).refine(data => ['income', 'transfer', 'reconciliation'].includes(data.type) || (data.category && data.category.length > 0), {
     message: 'Required',
     path: ['category'],
 });
@@ -86,9 +86,13 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
   const transactionType = form.watch('type');
   const isEditMode = !!transactionToEdit;
 
-  const filteredCategories = useMemo(() => 
-    categories?.filter(c => c.type === transactionType) || [], 
-  [categories, transactionType]);
+  const filteredCategories = useMemo(() => {
+    if (!categories) return [];
+    if (transactionType === 'expense' || transactionType === 'investment') {
+      return categories.filter(c => c.type === transactionType);
+    }
+    return [];
+  }, [categories, transactionType]);
 
   const transferAccounts = useMemo(() => 
     accounts?.filter(acc => acc.id !== form.getValues('accountId')) || [], 
@@ -111,7 +115,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
         category = 'Investment';
     }
     
-    const amount = [TransactionType.Income, TransactionType.Reconciliation].includes(values.type) ? Math.abs(values.amount) : -Math.abs(values.amount);
+    const amount = Math.abs(values.amount);
 
     const transactionData: Omit<Transaction, 'id' | 'userId'> = {
       description: values.description,
@@ -127,8 +131,6 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
     }
 
     try {
-        const batch = writeBatch(firestore);
-
         if (isEditMode && transactionToEdit) {
             const docRef = doc(firestore, `users/${user.uid}/accounts/${values.accountId}/transactions`, transactionToEdit.id);
             setDocumentNonBlocking(docRef, transactionData, { merge: true });
@@ -143,7 +145,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
                 const transferTransactionData: Omit<Transaction, 'id' | 'userId'> = {
                   accountId: toAccount.id,
                   category: 'Transfer',
-                  amount: Math.abs(values.amount),
+                  amount: amount,
                   type: TransactionType.Income,
                   description: `Transfer from ${selectedAccount.name}`,
                   date: values.date.toISOString()
@@ -310,7 +312,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
                   )}
                   
                   {(transactionType === 'expense' || transactionType === 'investment') && (
-                    <FormField
+                     <FormField
                       control={form.control}
                       name="category"
                       render={({ field }) => (
@@ -322,7 +324,7 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                                 <SelectTrigger className="h-10">
-                                    <SelectValue placeholder={filteredCategories.length > 0 ? "Select Category" : "No categories found"} />
+                                    <SelectValue placeholder={filteredCategories.length > 0 ? "Select Category" : "Add a category to start"} />
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>{filteredCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
@@ -330,7 +332,6 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
                           <FormMessage className="text-[10px]" />
                         </FormItem>
                       )}
-                    />
                   )}
 
                   {transactionType === 'expense' && (

@@ -37,7 +37,7 @@ export default function NeedsWantsChart({ transactions }: { transactions: Transa
         let wants = 0;
         
         expenses.forEach(t => {
-            const amount = Math.abs(t.amount);
+            const amount = t.amount;
             if (t.expenseType === 'need') {
                 needs += amount;
             } else if (t.expenseType === 'want') {

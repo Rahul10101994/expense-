@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lightbulb } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Transaction, Goal } from '@/lib/types';
+import { TransactionType } from '@/lib/types';
 
 export default function AiInsights({ transactions, goals }: { transactions: Transaction[]; goals: Goal[] }) {
   const [insights, setInsights] = useState<string>('');
@@ -13,14 +15,14 @@ export default function AiInsights({ transactions, goals }: { transactions: Tran
 
   const inputData = useMemo(() => {
     const totalIncome = transactions
-      .filter(t => t.type === 'income')
+      .filter(t => t.type === TransactionType.Income)
       .reduce((acc, t) => acc + t.amount, 0);
 
     const spendingByCategory = transactions
-      .filter(t => t.type === 'expense')
+      .filter(t => t.type === TransactionType.Expense)
       .reduce((acc, t) => {
         const categoryKey = t.category || 'Other';
-        acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
+        acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
         return acc;
       }, {} as Record<string, number>);
       

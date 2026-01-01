@@ -97,11 +97,11 @@ export default function EditAccountForm({ account, onAccountChanged, children }:
         const transactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`);
         const adjustmentTransaction = {
           accountId: account.id,
-          amount: balanceDifference,
+          amount: Math.abs(balanceDifference),
           category: 'Reconciliation',
           date: new Date().toISOString(),
           description: 'Balance Adjustment',
-          type: TransactionType.Reconciliation,
+          type: balanceDifference > 0 ? TransactionType.Income : TransactionType.Expense,
         };
         const newTransactionRef = doc(transactionCollectionRef);
         batch.set(newTransactionRef, adjustmentTransaction);

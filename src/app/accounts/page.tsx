@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import AddAccountForm from '@/components/accounts/add-account-form';
 import Link from 'next/link';
 import EditAccountForm from '@/components/accounts/edit-account-form';
+import { TransactionType } from '@/lib/types';
 
 export default function AccountsPage() {
     const firestore = useFirestore();
@@ -40,7 +41,11 @@ export default function AccountsPage() {
             let balance = 0;
             transactionsSnapshot.forEach(doc => {
                 const transaction = doc.data() as Transaction;
-                balance += transaction.amount;
+                if (transaction.type === TransactionType.Income || transaction.type === TransactionType.Reconciliation) {
+                    balance += transaction.amount;
+                } else {
+                    balance -= transaction.amount;
+                }
             });
             fetchedAccounts[i].balance = balance;
         }

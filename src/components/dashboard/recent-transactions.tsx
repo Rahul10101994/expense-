@@ -26,6 +26,7 @@ import { ArrowRight, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import AddTransactionForm from '../transactions/add-transaction-form';
 import { isSameMonth } from 'date-fns';
+import { TransactionType } from '@/lib/types';
 
 export default function RecentTransactions({ transactions, onTransactionAdded }: { transactions: Transaction[], onTransactionAdded?: () => void }) {
     const recentTransactions = useMemo(() => {
@@ -92,7 +93,7 @@ export default function RecentTransactions({ transactions, onTransactionAdded }:
                                         "text-right font-medium",
                                         transaction.type === 'income' ? 'text-green-500' : 'text-foreground'
                                     )}>
-                                        {transaction.type === 'income' ? '+' : ''}{formatCurrency(transaction.amount)}
+                                        {transaction.type === TransactionType.Income ? '+' : '-'}{formatCurrency(transaction.amount)}
                                     </TableCell>
                                 </TableRow>
                             ))}

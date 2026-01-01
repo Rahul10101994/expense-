@@ -137,7 +137,7 @@ export default function ReportsPage() {
             if (t.type === TransactionType.Income && t.category !== 'Transfer') {
                 income += t.amount;
             } else if (t.type === TransactionType.Expense) {
-                expenses += Math.abs(t.amount);
+                expenses += t.amount;
             }
         });
         const savings = income - expenses;
@@ -160,7 +160,7 @@ export default function ReportsPage() {
 
         const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
-            acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
+            acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
             return acc;
         }, {} as Record<string, number>);
         

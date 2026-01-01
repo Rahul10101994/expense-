@@ -27,7 +27,7 @@ export default function SpendingBreakdownChart({ transactions }: { transactions:
         const categoryMap: { [key: string]: number } = {};
         let total = 0;
         expenses.forEach(t => {
-            const amount = Math.abs(t.amount);
+            const amount = t.amount;
             const categoryKey = t.category || 'Other';
             if (categoryMap[categoryKey]) {
                 categoryMap[categoryKey] += amount;

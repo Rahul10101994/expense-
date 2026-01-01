@@ -82,7 +82,7 @@ export default function BudgetsPage() {
 
         const spendingByCategory = currentMonthTransactions.filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
-            acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
+            acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
             return acc;
         }, {} as Record<string, number>);
         

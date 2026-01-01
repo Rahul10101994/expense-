@@ -234,7 +234,7 @@ export default function TransactionsPage() {
                                     "text-right font-medium",
                                     transaction.type === TransactionType.Income ? 'text-green-500' : 'text-foreground'
                                 )}>
-                                    {[TransactionType.Income, TransactionType.Reconciliation].includes(transaction.type) && transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+                                    {transaction.type === TransactionType.Income ? '+' : '-'}{formatCurrency(transaction.amount)}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <ManageTransactionDialog 

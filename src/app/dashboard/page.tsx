@@ -57,13 +57,13 @@ export default function DashboardPage() {
         const updatedAccounts = fetchedAccounts.map(account => {
             const accountTransactions = fetchedTransactions.filter(t => t.accountId === account.id);
             const currentBalance = accountTransactions.reduce((acc, t) => {
-                // For credit cards, expenses increase the balance (debt) and payments (income) decrease it.
-                if (account.type === 'credit') {
-                    if (t.type === TransactionType.Expense) return acc + Math.abs(t.amount);
-                    if (t.type === TransactionType.Income) return acc - Math.abs(t.amount); // Payments to card
+                if (t.type === TransactionType.Income || t.type === TransactionType.Reconciliation) {
+                    return acc + t.amount;
                 }
-                // For other accounts, income increases balance, expenses decrease it.
-                return acc + t.amount;
+                if (t.type === TransactionType.Expense || t.type === TransactionType.Investment || t.type === TransactionType.Transfer) {
+                   return acc - t.amount;
+                }
+                return acc;
             }, 0);
             return { ...account, balance: currentBalance };
         });
@@ -105,7 +105,7 @@ export default function DashboardPage() {
 
         const spendingByCategory = currentMonthTransactions.filter(t => t.type === TransactionType.Expense).reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
-            acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
+            acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
             return acc;
         }, {} as Record<string, number>);
         

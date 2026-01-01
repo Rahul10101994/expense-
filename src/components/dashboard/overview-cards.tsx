@@ -43,7 +43,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
       if (t.type === TransactionType.Income && t.category !== 'Transfer' && t.category !== 'Reconciliation') {
         income += t.amount;
       } else if (t.type === TransactionType.Expense) {
-        expenses += Math.abs(t.amount);
+        expenses += t.amount;
       }
     });
 
