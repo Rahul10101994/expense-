@@ -22,7 +22,7 @@ import { TransactionType } from '@/lib/types';
 export default function DashboardPage() {
     const firestore = useFirestore();
     const { user } = useUser();
-    const currentMonth = useMemo(() => new Date(), []);
+    const currentMonth = new Date();
     
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
