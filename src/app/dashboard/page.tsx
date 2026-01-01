@@ -103,11 +103,13 @@ export default function DashboardPage() {
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets || !currentMonthTransactions) return [];
 
-        const spendingByCategory = currentMonthTransactions.filter(t => t.type === TransactionType.Expense).reduce((acc, t) => {
-            const categoryKey = t.category || 'Other';
-            acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
-            return acc;
-        }, {} as Record<string, number>);
+        const spendingByCategory = currentMonthTransactions
+            .filter(t => t.type === TransactionType.Expense)
+            .reduce((acc, t) => {
+                const categoryKey = t.category || 'Other';
+                acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
+                return acc;
+            }, {} as Record<string, number>);
         
         return savedBudgets
             .filter(budget => budget.amount && budget.amount > 0)
