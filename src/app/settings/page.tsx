@@ -40,137 +40,6 @@ import EditCategoryForm from '@/components/categories/edit-category-form';
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 type ClearScope = 'all' | 'period';
 
-function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void }) {
-    const firestore = useFirestore();
-    const { user } = useUser();
-    const { toast } = useToast();
-    const [newCategory, setNewCategory] = useState('');
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
-
-    const categoriesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return collection(firestore, `users/${user.uid}/categories`);
-    }, [firestore, user]);
-
-    const { data: categories, isLoading: categoriesLoading, error } = useCollection<Category>(categoriesQuery);
-
-    const handleAddCategory = async () => {
-        if (!newCategory.trim() || !user || !firestore) return;
-        try {
-            await addDoc(collection(firestore, `users/${user.uid}/categories`), {
-                name: newCategory.trim(),
-                userId: user.uid,
-                type: 'expense' // Defaulting to expense, can be changed later
-            });
-            toast({ title: "Category added", description: `"${newCategory}" has been added.` });
-            setNewCategory('');
-            onDataChanged();
-        } catch (error) {
-            console.error("Error adding category:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not add category." });
-        }
-    };
-
-    const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
-        if (!user || !firestore) return;
-        try {
-            const batch = writeBatch(firestore);
-
-            const categoryDocRef = doc(firestore, `users/${user.uid}/categories`, categoryId);
-            batch.delete(categoryDocRef);
-            
-            const budgetsQuery = query(collection(firestore, `users/${user.uid}/budgets`), where('categoryId', '==', categoryName));
-            const budgetsSnapshot = await getDocs(budgetsQuery);
-            budgetsSnapshot.forEach(budgetDoc => {
-                batch.delete(budgetDoc.ref);
-            });
-            
-            await batch.commit();
-
-            toast({ title: "Category deleted", description: `"${categoryName}" and its associated budgets have been deleted.` });
-            onDataChanged();
-        } catch (error) {
-            console.error("Error deleting category and budgets:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not delete category." });
-        }
-    };
-
-    return (
-        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <SheetTrigger asChild>
-                <Button>Manage Categories</Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-                <SheetHeader>
-                    <SheetTitle>Manage Categories</SheetTitle>
-                    <SheetDescription>
-                        Add, edit, or delete your spending, income, and investment categories.
-                    </SheetDescription>
-                </SheetHeader>
-                <div className="py-4">
-                    <div className="flex space-x-2 mb-4">
-                        <Input
-                            placeholder="New category name"
-                            value={newCategory}
-                            onChange={(e) => setNewCategory(e.target.value)}
-                        />
-                        <Button onClick={handleAddCategory}><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
-                    </div>
-                    {categoriesLoading ? <div className="flex justify-center"><Spinner /></div> : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Category</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {categories?.map((category) => (
-                                    <TableRow key={category.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <CategoryIcon category={category.name} className="h-4 w-4 text-muted-foreground" />
-                                                <span className="font-medium">{category.name}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <EditCategoryForm category={category} onCategoryChanged={onDataChanged}>
-                                                <Button variant="ghost" size="icon">
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                            </EditCategoryForm>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This will permanently delete the "{category.name}" category and its associated budgets. This action cannot be undone.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteCategory(category.id, category.name)}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </div>
-            </SheetContent>
-        </Sheet>
-    );
-}
-
-
 export default function SettingsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
@@ -437,14 +306,6 @@ export default function SettingsPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Manage Categories</CardTitle>
-                </CardHeader>
-                <CardContent>
-                   <ManageCategoriesSheet onDataChanged={() => setRefreshKey(k => k + 1)} />
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
                     <CardTitle>Clear Data</CardTitle>
                     <CardDescription>Permanently delete financial records. This action cannot be undone.</CardDescription>
                 </CardHeader>
@@ -523,5 +384,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
