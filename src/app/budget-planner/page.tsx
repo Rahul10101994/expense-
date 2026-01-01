@@ -67,7 +67,7 @@ export default function BudgetPlannerPage() {
   const currentMonth = format(new Date(), 'yyyy-MM');
 
   const categoriesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(
         collection(firestore, `users/${user.uid}/categories`),
         where('type', '==', 'expense')
@@ -96,7 +96,7 @@ export default function BudgetPlannerPage() {
   const totalBudget = form.watch('totalAmount');
 
   const budgetsQuery = useMemoFirebase(() => {
-    if (!user || !selectedMonth) return null;
+    if (!user || !selectedMonth || !firestore) return null;
     const monthStart = startOfMonth(new Date(selectedMonth)).toISOString();
     return query(
       collection(firestore, `users/${user.uid}/budgets`),

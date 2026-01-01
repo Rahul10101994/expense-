@@ -25,7 +25,7 @@ export default function BudgetsPage() {
     const [transactionsLoading, setTransactionsLoading] = useState(true);
 
     const accountsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return collection(firestore, `users/${user.uid}/accounts`);
     }, [firestore, user]);
     const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
@@ -65,7 +65,7 @@ export default function BudgetsPage() {
     }, [user, firestore, accounts, accountsLoading, currentMonth]);
 
     const budgetsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         const monthStart = startOfMonth(currentMonth).toISOString();
         return query(
             collection(firestore, `users/${user.uid}/budgets`),

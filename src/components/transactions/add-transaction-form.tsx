@@ -65,10 +65,10 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const accountsQuery = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/accounts`) : null, [firestore, user]);
+  const accountsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, `users/${user.uid}/accounts`) : null, [firestore, user]);
   const { data: accounts } = useCollection<Account>(accountsQuery);
 
-  const categoriesQuery = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/categories`) : null, [firestore, user]);
+  const categoriesQuery = useMemoFirebase(() => user && firestore ? collection(firestore, `users/${user.uid}/categories`) : null, [firestore, user]);
   const { data: categories } = useCollection<Category>(categoriesQuery);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -141,8 +141,8 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
                   accountId: toAccount.id,
                   category: 'Transfer',
                   amount: Math.abs(values.amount),
-                  description: `Transfer from ${selectedAccount.name}`,
                   type: TransactionType.Income,
+                  description: `Transfer from ${selectedAccount.name}`,
                   date: values.date.toISOString()
                 };
                 const toTransactionCollectionRef = collection(firestore, `users/${user.uid}/accounts/${toAccount.id}/transactions`);

@@ -84,7 +84,7 @@ export default function SettingsPage() {
     }, [fetchAllData]);
 
     const categoriesQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return collection(firestore, `users/${user.uid}/categories`);
     }, [firestore, user]);
 

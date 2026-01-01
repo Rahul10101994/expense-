@@ -89,7 +89,7 @@ export default function DashboardPage() {
     const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
      const goalsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return collection(firestore, `users/${user.uid}/goals`);
     }, [firestore, user]);
 
