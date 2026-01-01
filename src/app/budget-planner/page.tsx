@@ -341,7 +341,7 @@ export default function BudgetPlannerPage() {
                 
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Expense Categories</h3>
-                  <ScrollArea className="h-[200px] pr-4 border rounded-md p-2">
+                  <ScrollArea className="pr-4 border rounded-md p-2">
                       <div className="space-y-2">
                       {expenseCategories.map((category) => {
                         const index = allCategories.findIndex(c => c.id === category.id);
@@ -383,7 +383,7 @@ export default function BudgetPlannerPage() {
                 
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Investment Categories</h3>
-                  <ScrollArea className="h-[200px] pr-4 border rounded-md p-2">
+                  <ScrollArea className="pr-4 border rounded-md p-2">
                       <div className="space-y-2">
                       {investmentCategories.map((category) => {
                         const index = allCategories.findIndex(c => c.id === category.id);
