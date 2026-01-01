@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
+import { usePathname } from 'next/navigation';
 
 export default function BudgetsPage() {
     const firestore = useFirestore();
@@ -23,46 +24,50 @@ export default function BudgetsPage() {
     const currentMonth = useMemo(() => new Date(), []);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [transactionsLoading, setTransactionsLoading] = useState(true);
+    const [accountsLoading, setAccountsLoading] = useState(true);
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const pathname = usePathname(); // Using pathname to trigger re-fetch on navigation
 
-    const accountsQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return collection(firestore, `users/${user.uid}/accounts`);
-    }, [firestore, user]);
-    const { data: accounts, isLoading: accountsLoading } = useCollection<Account>(accountsQuery);
-    
-    useEffect(() => {
-        if (!user || !firestore || accountsLoading) return;
-        
-        const fetchTransactions = async () => {
-            setTransactionsLoading(true);
-            const allTransactions: Transaction[] = [];
-
-            if (!accounts || accounts.length === 0) {
-                setTransactions([]);
-                setTransactionsLoading(false);
-                return;
-            }
-            
-            const monthStart = startOfMonth(currentMonth);
-            const monthEnd = endOfMonth(currentMonth);
-
-            for (const account of accounts) {
-                const transactionsQuery = query(
-                    collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`),
-                    where('date', '>=', monthStart.toISOString()),
-                    where('date', '<=', monthEnd.toISOString())
-                );
-                const transactionsSnapshot = await getDocs(transactionsQuery);
-                transactionsSnapshot.forEach(doc => {
-                    allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
-                });
-            }
-            setTransactions(allTransactions);
+    const fetchAllData = useCallback(async () => {
+        if (!user || !firestore) {
             setTransactionsLoading(false);
-        };
+            setAccountsLoading(false);
+            return;
+        }
 
-        fetchTransactions();
-    }, [user, firestore, accounts, accountsLoading, currentMonth]);
+        setAccountsLoading(true);
+        const accountsQuery = query(collection(firestore, `users/${user.uid}/accounts`));
+        const accountsSnapshot = await getDocs(accountsQuery);
+        const fetchedAccounts: Account[] = [];
+        accountsSnapshot.forEach(doc => {
+            fetchedAccounts.push({ id: doc.id, ...doc.data() } as Account);
+        });
+        setAccounts(fetchedAccounts);
+        setAccountsLoading(false);
+
+        setTransactionsLoading(true);
+        const allTransactions: Transaction[] = [];
+        const monthStart = startOfMonth(currentMonth);
+        const monthEnd = endOfMonth(currentMonth);
+
+        for (const account of fetchedAccounts) {
+            const transactionsQuery = query(
+                collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`),
+                where('date', '>=', monthStart.toISOString()),
+                where('date', '<=', monthEnd.toISOString())
+            );
+            const transactionsSnapshot = await getDocs(transactionsQuery);
+            transactionsSnapshot.forEach(doc => {
+                allTransactions.push({ id: doc.id, ...doc.data() } as Transaction);
+            });
+        }
+        setTransactions(allTransactions);
+        setTransactionsLoading(false);
+    }, [user, firestore, currentMonth]);
+
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData, pathname]); // Re-fetch when page is visited
 
     const budgetsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -78,9 +83,7 @@ export default function BudgetsPage() {
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets || !transactions) return [];
         
-        const currentMonthTransactions = transactions.filter(t => isSameMonth(new Date(t.date), currentMonth));
-
-        const spendingByCategory = currentMonthTransactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
             return acc;
@@ -96,7 +99,7 @@ export default function BudgetsPage() {
                 month: budget.month
         }));
 
-    }, [savedBudgets, transactions, currentMonth]);
+    }, [savedBudgets, transactions]);
 
 
     const formatCurrency = (amount: number) => {

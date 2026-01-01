@@ -39,6 +39,115 @@ import Link from 'next/link';
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 type ClearScope = 'all' | 'period';
 
+function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void }) {
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const { toast } = useToast();
+    const [newCategory, setNewCategory] = useState('');
+
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return collection(firestore, `users/${user.uid}/categories`);
+    }, [firestore, user]);
+
+    const { data: categories, isLoading: categoriesLoading, error } = useCollection<Category>(categoriesQuery);
+
+    const handleAddCategory = async () => {
+        if (!newCategory.trim() || !user || !firestore) return;
+        try {
+            await addDoc(collection(firestore, `users/${user.uid}/categories`), {
+                name: newCategory.trim(),
+                userId: user.uid,
+                type: 'expense' // Defaulting to expense, can be changed later
+            });
+            toast({ title: "Category added", description: `"${newCategory}" has been added.` });
+            setNewCategory('');
+            onDataChanged();
+        } catch (error) {
+            console.error("Error adding category:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not add category." });
+        }
+    };
+
+    const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+        if (!user || !firestore) return;
+        try {
+            const batch = writeBatch(firestore);
+
+            const categoryDocRef = doc(firestore, `users/${user.uid}/categories`, categoryId);
+            batch.delete(categoryDocRef);
+            
+            const budgetsQuery = query(collection(firestore, `users/${user.uid}/budgets`), where('categoryId', '==', categoryName));
+            const budgetsSnapshot = await getDocs(budgetsQuery);
+            budgetsSnapshot.forEach(budgetDoc => {
+                batch.delete(budgetDoc.ref);
+            });
+            
+            await batch.commit();
+
+            toast({ title: "Category deleted", description: `"${categoryName}" and its associated budgets have been deleted.` });
+            onDataChanged();
+        } catch (error) {
+            console.error("Error deleting category and budgets:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not delete category." });
+        }
+    };
+
+    return (
+        <Sheet>
+            <SheetTrigger asChild>
+                <Button>Manage Categories</Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+                <SheetHeader>
+                    <SheetTitle>Manage Categories</SheetTitle>
+                    <SheetDescription>
+                        Add, edit, or delete your spending, income, and investment categories.
+                    </SheetDescription>
+                </SheetHeader>
+                <div className="py-4">
+                    <div className="flex space-x-2 mb-4">
+                        <Input
+                            placeholder="New category name"
+                            value={newCategory}
+                            onChange={(e) => setNewCategory(e.target.value)}
+                        />
+                        <Button onClick={handleAddCategory}><PlusCircle className="mr-2 h-4 w-4" /> Add Category</Button>
+                    </div>
+                    {categoriesLoading ? <div className="flex justify-center"><Spinner /></div> : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {categories?.map((category) => (
+                                    <TableRow key={category.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <CategoryIcon category={category.name} className="h-4 w-4 text-muted-foreground" />
+                                                <span className="font-medium">{category.name}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id, category.name)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
+
 export default function SettingsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
@@ -47,9 +156,9 @@ export default function SettingsPage() {
     const [period, setPeriod] = useState<Period>('currentMonth');
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
-    const [newCategory, setNewCategory] = useState('');
     const [isClearing, setIsClearing] = useState(false);
     const [clearScope, setClearScope] = useState<ClearScope>('all');
+    const [refreshKey, setRefreshKey] = useState(0);
     
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -81,14 +190,7 @@ export default function SettingsPage() {
 
     useEffect(() => {
         fetchAllData();
-    }, [fetchAllData]);
-
-    const categoriesQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return collection(firestore, `users/${user.uid}/categories`);
-    }, [firestore, user]);
-
-    const { data: categories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
+    }, [fetchAllData, refreshKey]);
     
     const filteredTransactions = useMemo(() => {
         if (!transactions) return [];
@@ -144,47 +246,6 @@ export default function SettingsPage() {
         document.body.removeChild(a);
     };
 
-    const handleAddCategory = async () => {
-        if (!newCategory.trim() || !user || !firestore) return;
-        try {
-            await addDoc(collection(firestore, `users/${user.uid}/categories`), {
-                name: newCategory.trim(),
-                userId: user.uid,
-                type: 'expense' // Defaulting to expense, can be changed later
-            });
-            toast({ title: "Category added", description: `"${newCategory}" has been added.` });
-            setNewCategory('');
-        } catch (error) {
-            console.error("Error adding category:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not add category." });
-        }
-    };
-
-    const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
-        if (!user || !firestore) return;
-        try {
-            const batch = writeBatch(firestore);
-
-            // Delete the category document
-            const categoryDocRef = doc(firestore, `users/${user.uid}/categories`, categoryId);
-            batch.delete(categoryDocRef);
-            
-            // Query and delete associated budgets
-            const budgetsQuery = query(collection(firestore, `users/${user.uid}/budgets`), where('categoryId', '==', categoryName));
-            const budgetsSnapshot = await getDocs(budgetsQuery);
-            budgetsSnapshot.forEach(budgetDoc => {
-                batch.delete(budgetDoc.ref);
-            });
-            
-            await batch.commit();
-
-            toast({ title: "Category deleted", description: `"${categoryName}" and its associated budgets have been deleted.` });
-        } catch (error) {
-            console.error("Error deleting category and budgets:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not delete category." });
-        }
-    };
-
     const handleClearRecords = async () => {
         if (!user || !firestore) return;
         setIsClearing(true);
@@ -238,6 +299,7 @@ export default function SettingsPage() {
 
             await batch.commit();
             toast({ title: "Records Cleared", description: "Selected data has been successfully cleared." });
+            setRefreshKey(k => k + 1);
         } catch (error) {
             console.error("Error clearing records:", error);
             toast({ variant: 'destructive', title: "Error", description: "Could not clear records." });
@@ -257,7 +319,7 @@ export default function SettingsPage() {
         return `This action cannot be undone. This will permanently delete all transactions for ${getReportTitle()}. Other data will not be affected.`;
     }
 
-    if (isLoading || categoriesLoading) {
+    if (isLoading) {
         return (
             <div className="flex h-64 w-full items-center justify-center">
                 <Spinner size="large" />
@@ -355,56 +417,7 @@ export default function SettingsPage() {
                     <CardTitle>Manage Categories</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button>Manage Categories</Button>
-                      </SheetTrigger>
-                      <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-                        <SheetHeader>
-                          <SheetTitle>Manage Categories</SheetTitle>
-                          <SheetDescription>
-                            Add, edit, or delete your spending, income, and investment categories.
-                          </SheetDescription>
-                        </SheetHeader>
-                        <div className="py-4">
-                            <div className="flex space-x-2 mb-4">
-                                <Input 
-                                    placeholder="New category name" 
-                                    value={newCategory}
-                                    onChange={(e) => setNewCategory(e.target.value)}
-                                />
-                                <Button onClick={handleAddCategory}><PlusCircle className="mr-2 h-4 w-4" /> Add Category</Button>
-                            </div>
-                            {categoriesLoading ? <div className="flex justify-center"><Spinner /></div> : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Category</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {categories?.map((category) => (
-                                        <TableRow key={category.id}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <CategoryIcon category={category.name} className="h-4 w-4 text-muted-foreground" />
-                                                    <span className="font-medium">{category.name}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id, category.name)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                            )}
-                        </div>
-                      </SheetContent>
-                    </Sheet>
+                   <ManageCategoriesSheet onDataChanged={() => setRefreshKey(k => k + 1)} />
                 </CardContent>
             </Card>
             <Card>
