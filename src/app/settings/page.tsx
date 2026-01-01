@@ -163,10 +163,24 @@ export default function SettingsPage() {
     const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
         if (!user || !firestore) return;
         try {
-            await deleteDoc(doc(firestore, `users/${user.uid}/categories`, categoryId));
-            toast({ title: "Category deleted", description: `"${categoryName}" has been deleted.` });
+            const batch = writeBatch(firestore);
+
+            // Delete the category document
+            const categoryDocRef = doc(firestore, `users/${user.uid}/categories`, categoryId);
+            batch.delete(categoryDocRef);
+            
+            // Query and delete associated budgets
+            const budgetsQuery = query(collection(firestore, `users/${user.uid}/budgets`), where('categoryId', '==', categoryName));
+            const budgetsSnapshot = await getDocs(budgetsQuery);
+            budgetsSnapshot.forEach(budgetDoc => {
+                batch.delete(budgetDoc.ref);
+            });
+            
+            await batch.commit();
+
+            toast({ title: "Category deleted", description: `"${categoryName}" and its associated budgets have been deleted.` });
         } catch (error) {
-            console.error("Error deleting category:", error);
+            console.error("Error deleting category and budgets:", error);
             toast({ variant: 'destructive', title: "Error", description: "Could not delete category." });
         }
     };
