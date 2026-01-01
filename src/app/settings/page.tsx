@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CategoryIcon } from '@/lib/icons';
-import { PlusCircle, Trash2, Download, AlertTriangle, FileText, Landmark } from 'lucide-react';
+import { PlusCircle, Trash2, Download, AlertTriangle, FileText, Landmark, Edit } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -35,6 +35,7 @@ import { isSameMonth, isSameYear, getYear, getMonth, format, startOfMonth, endOf
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
 import Link from 'next/link';
+import EditCategoryForm from '@/components/categories/edit-category-form';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 type ClearScope = 'all' | 'period';
@@ -132,6 +133,11 @@ function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void })
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
+                                            <EditCategoryForm category={category} onCategoryChanged={onDataChanged}>
+                                                <Button variant="ghost" size="icon">
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                            </EditCategoryForm>
                                             <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(category.id, category.name)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
