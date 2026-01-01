@@ -7,6 +7,7 @@ import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import {
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -70,7 +71,7 @@ export default function NeedsWantsChart({ transactions }: { transactions: Transa
           {needsWantsData.length > 0 ? (
             <ChartContainer
               config={chartConfig}
-              className="mx-auto aspect-square max-h-[250px]"
+              className="mx-auto aspect-square max-h-[150px]"
             >
               <PieChart>
                 <ChartTooltip
@@ -91,11 +92,23 @@ export default function NeedsWantsChart({ transactions }: { transactions: Transa
               </PieChart>
             </ChartContainer>
           ) : (
-             <div className="flex h-[250px] w-full items-center justify-center">
+             <div className="flex h-[150px] w-full items-center justify-center">
                 <p className="text-sm text-muted-foreground">No 'Need' or 'Want' data.</p>
             </div>
           )}
       </CardContent>
+       <CardFooter className="flex-col gap-2 text-sm">
+        {needsWantsData.length > 0 && (
+          <>
+            <div className="flex w-full items-center gap-2 font-medium leading-none">
+              Total Expenses: {formatCurrency(totalExpenses)}
+            </div>
+            <div className="leading-none text-muted-foreground w-full">
+              Showing total expenses classified as needs vs. wants.
+            </div>
+          </>
+        )}
+      </CardFooter>
     </>
   )
 }
