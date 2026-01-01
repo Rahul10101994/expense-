@@ -35,7 +35,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
     return transactions;
   }, [transactions, period]);
 
-  const { income, expenses, investments } = useMemo(() => {
+  const { income, expenses, investments, savings } = useMemo(() => {
     let income = 0;
     let expenses = 0;
     let investments = 0;
@@ -49,8 +49,10 @@ export default function OverviewCards({ transactions, accounts }: { transactions
         investments += t.amount;
       }
     });
+    
+    const savings = income - expenses - investments;
 
-    return { income, expenses, investments };
+    return { income, expenses, investments, savings };
   }, [filteredTransactions]);
 
   const totalBalance = useMemo(() => {
@@ -100,7 +102,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
         </CardHeader>
         <Link href={`/settings/reports?period=${period}`}>
             <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-xs">
+                <div className="grid grid-cols-4 gap-4 text-xs">
                     <div>
                         <div className="text-muted-foreground">Income</div>
                         <div className="font-medium text-green-500">{formatCurrency(income)}</div>
@@ -112,6 +114,10 @@ export default function OverviewCards({ transactions, accounts }: { transactions
                     <div>
                         <div className="text-muted-foreground">Investments</div>
                         <div className="font-medium text-blue-500">{formatCurrency(investments)}</div>
+                    </div>
+                    <div>
+                        <div className="text-muted-foreground">Savings</div>
+                        <div className={cn("font-medium", savings >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(savings)}</div>
                     </div>
                 </div>
             </CardContent>
