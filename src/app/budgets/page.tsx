@@ -142,14 +142,23 @@ export default function BudgetsPage() {
         setRefreshKey(k => k + 1);
     };
 
-    const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
-        if (!user || !firestore) return;
+    const handleDeleteCategory = async (categoryName: string) => {
+        if (!user || !firestore || !categories) return;
+    
+        const categoryToDelete = categories.find(c => c.name === categoryName);
+        if (!categoryToDelete) {
+            toast({ variant: 'destructive', title: "Error", description: "Category not found." });
+            return;
+        }
+
         try {
             const batch = writeBatch(firestore);
 
-            const categoryDocRef = doc(firestore, `users/${user.uid}/categories`, categoryId);
+            // Delete category doc
+            const categoryDocRef = doc(firestore, `users/${user.uid}/categories`, categoryToDelete.id);
             batch.delete(categoryDocRef);
             
+            // Delete associated budgets
             const budgetsQuery = query(collection(firestore, `users/${user.uid}/budgets`), where('categoryId', '==', categoryName));
             const budgetsSnapshot = await getDocs(budgetsQuery);
             budgetsSnapshot.forEach(budgetDoc => {
@@ -252,7 +261,7 @@ export default function BudgetsPage() {
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteCategory(category.id, category.name)}>Delete</AlertDialogAction>
+                                                        <AlertDialogAction onClick={() => handleDeleteCategory(category.name)}>Delete</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
