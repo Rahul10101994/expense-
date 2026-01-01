@@ -12,7 +12,7 @@ import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-ch
 import { useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import Link from 'next/link';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import type { Transaction, Budget, Goal, Account } from '@/lib/types';
+import type { Transaction, Budget, Goal, Account, Category } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
@@ -94,6 +94,13 @@ export default function DashboardPage() {
     }, [firestore, user]);
 
     const { data: goals, isLoading: goalsLoading } = useCollection<Goal>(goalsQuery);
+
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, `users/${user.uid}/categories`));
+    }, [firestore, user]);
+
+    const { data: categories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
     
     const currentMonthTransactions = useMemo(() => {
         if (!transactions) return [];
@@ -101,10 +108,10 @@ export default function DashboardPage() {
     }, [transactions, currentMonth]);
 
     const budgets: Budget[] = useMemo(() => {
-        if (!savedBudgets || !currentMonthTransactions) return [];
+        if (!savedBudgets || !currentMonthTransactions || !categories) return [];
 
         const spendingByCategory = currentMonthTransactions
-            .filter(t => t.type === TransactionType.Expense)
+            .filter(t => t.type === TransactionType.Expense || t.type === TransactionType.Investment)
             .reduce((acc, t) => {
                 const categoryKey = t.category || 'Other';
                 acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
@@ -113,18 +120,22 @@ export default function DashboardPage() {
         
         return savedBudgets
             .filter(budget => budget.amount && budget.amount > 0)
-            .map(budget => ({
-                id: budget.id,
-                category: budget.categoryId as Transaction['category'],
-                limit: budget.amount || 0,
-                spent: spendingByCategory[budget.categoryId!] || 0,
-                month: budget.month
-        }));
+            .map(budget => {
+                const categoryInfo = categories.find(c => c.name === budget.categoryId);
+                return {
+                    id: budget.id,
+                    category: budget.categoryId as Transaction['category'],
+                    limit: budget.amount || 0,
+                    spent: spendingByCategory[budget.categoryId!] || 0,
+                    month: budget.month,
+                    type: categoryInfo?.type,
+                }
+            }) as (Budget & { type: 'expense' | 'investment' })[];
 
-    }, [savedBudgets, currentMonthTransactions]);
+    }, [savedBudgets, currentMonthTransactions, categories]);
     
 
-    if (isLoading || budgetsLoading || goalsLoading) {
+    if (isLoading || budgetsLoading || goalsLoading || categoriesLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Spinner size="large" />
@@ -142,7 +153,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 space-y-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <OverviewCards transactions={financialData.transactions} accounts={financialData.accounts} />
+        <OverviewCards transactions={financialData.transactions} accounts={financialData.accounts} budgets={financialData.budgets} />
       </div>
        <Link href="/budgets" className="mt-4 block">
           <BudgetGoals budgets={budgets} />

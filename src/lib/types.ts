@@ -38,6 +38,7 @@ export type Budget = {
   month: string;
   amount?: number;
   categoryId?: string;
+  type?: 'expense' | 'investment';
 };
 
 export type Goal = {

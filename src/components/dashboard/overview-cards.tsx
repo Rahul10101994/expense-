@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -10,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Transaction, Account } from '@/lib/types';
+import type { Transaction, Account, Budget } from '@/lib/types';
 import { useUser } from '@/firebase';
 import { isSameMonth, isSameYear, format } from 'date-fns';
 import Link from 'next/link';
@@ -19,7 +20,7 @@ import { TransactionType } from '@/lib/types';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall';
 
-export default function OverviewCards({ transactions, accounts }: { transactions: Transaction[], accounts: Account[] }) {
+export default function OverviewCards({ transactions, accounts, budgets }: { transactions: Transaction[], accounts: Account[], budgets: Budget[] }) {
   const { user } = useUser();
   const [period, setPeriod] = useState<Period>('currentMonth');
 
@@ -55,12 +56,23 @@ export default function OverviewCards({ transactions, accounts }: { transactions
     return { income, expenses, investments, savings };
   }, [filteredTransactions]);
 
+  const { expenseBudget, investmentBudget, expenseProgress, investmentProgress } = useMemo(() => {
+    if (!budgets || period !== 'currentMonth') return { expenseBudget: 0, investmentBudget: 0, expenseProgress: 0, investmentProgress: 0 };
+    
+    const expenseBudget = budgets.filter(b => b.type === 'expense').reduce((sum, b) => sum + b.limit, 0);
+    const investmentBudget = budgets.filter(b => b.type === 'investment').reduce((sum, b) => sum + b.limit, 0);
+    
+    const expenseProgress = expenseBudget > 0 ? (expenses / expenseBudget) * 100 : 0;
+    const investmentProgress = investmentBudget > 0 ? (investments / investmentBudget) * 100 : 0;
+
+    return { expenseBudget, investmentBudget, expenseProgress, investmentProgress };
+  }, [budgets, expenses, investments, period]);
+
   const totalBalance = useMemo(() => {
     if (!accounts) return 0;
     return accounts.reduce((sum, acc) => sum + acc.balance, 0);
   }, [accounts]);
   
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -102,7 +114,7 @@ export default function OverviewCards({ transactions, accounts }: { transactions
         </CardHeader>
         <Link href={`/settings/reports?period=${period}`}>
             <CardContent>
-                <div className="grid grid-cols-4 gap-4 text-xs">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                     <div>
                         <div className="text-muted-foreground">Income</div>
                         <div className="font-medium text-green-500">{formatCurrency(income)}</div>
@@ -110,10 +122,12 @@ export default function OverviewCards({ transactions, accounts }: { transactions
                     <div>
                         <div className="text-muted-foreground">Expenses</div>
                         <div className="font-medium text-red-500">{formatCurrency(expenses)}</div>
+                        {period === 'currentMonth' && expenseBudget > 0 && <Progress value={expenseProgress} className="h-1 mt-1" />}
                     </div>
                     <div>
                         <div className="text-muted-foreground">Investments</div>
                         <div className="font-medium text-blue-500">{formatCurrency(investments)}</div>
+                        {period === 'currentMonth' && investmentBudget > 0 && <Progress value={investmentProgress} className="h-1 mt-1" />}
                     </div>
                     <div>
                         <div className="text-muted-foreground">Savings</div>
