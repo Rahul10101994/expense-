@@ -35,9 +35,9 @@ export default function IncomeExpenseChart({ transactions }: { transactions: Tra
       if (t.type === TransactionType.Income) {
         dataByDay[day].income += t.amount;
       } else if (t.type === TransactionType.Expense) {
-        dataByDay[day].expenses += t.amount;
+        dataByDay[day].expenses += Math.abs(t.amount);
       } else if (t.type === TransactionType.Investment) {
-        dataByDay[day].investments += t.amount;
+        dataByDay[day].investments += Math.abs(t.amount);
       }
     });
 
