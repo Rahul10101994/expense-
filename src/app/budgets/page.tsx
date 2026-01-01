@@ -7,26 +7,47 @@ import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
 import BudgetGoals from '@/components/dashboard/budget-goals';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { Transaction, Budget, Account } from '@/lib/types';
+import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import type { Transaction, Budget, Account, Category } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { usePathname } from 'next/navigation';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import EditCategoryForm from '@/components/categories/edit-category-form';
+import { useToast } from '@/hooks/use-toast';
+
 
 export default function BudgetsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const { toast } = useToast();
     const currentMonth = useMemo(() => new Date(), []);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [transactionsLoading, setTransactionsLoading] = useState(true);
     const [accountsLoading, setAccountsLoading] = useState(true);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const pathname = usePathname(); // Using pathname to trigger re-fetch on navigation
+    const [refreshKey, setRefreshKey] = useState(0);
 
     const fetchAllData = useCallback(async () => {
         if (!user || !firestore) {
@@ -67,7 +88,7 @@ export default function BudgetsPage() {
 
     useEffect(() => {
         fetchAllData();
-    }, [fetchAllData, pathname]); // Re-fetch when page is visited
+    }, [fetchAllData, pathname, refreshKey]); // Re-fetch when page is visited or refreshKey changes
 
     const budgetsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -76,7 +97,14 @@ export default function BudgetsPage() {
             collection(firestore, `users/${user.uid}/budgets`),
             where('month', '==', monthStart),
         );
-    }, [firestore, user, currentMonth]);
+    }, [firestore, user, currentMonth, refreshKey]);
+
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, `users/${user.uid}/categories`));
+    }, [firestore, user, refreshKey]);
+
+    const { data: categories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
     
     const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
@@ -109,7 +137,36 @@ export default function BudgetsPage() {
         }).format(amount);
     };
 
-    if (budgetsLoading || transactionsLoading || accountsLoading) {
+    const handleDataChanged = () => {
+        setRefreshKey(k => k + 1);
+    };
+
+    const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+        if (!user || !firestore) return;
+        try {
+            const batch = writeBatch(firestore);
+
+            const categoryDocRef = doc(firestore, `users/${user.uid}/categories`, categoryId);
+            batch.delete(categoryDocRef);
+            
+            const budgetsQuery = query(collection(firestore, `users/${user.uid}/budgets`), where('categoryId', '==', categoryName));
+            const budgetsSnapshot = await getDocs(budgetsQuery);
+            budgetsSnapshot.forEach(budgetDoc => {
+                batch.delete(budgetDoc.ref);
+            });
+            
+            await batch.commit();
+
+            toast({ title: "Category deleted", description: `"${categoryName}" and its associated budgets have been deleted.` });
+            handleDataChanged();
+        } catch (error) {
+            console.error("Error deleting category and budgets:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not delete category." });
+        }
+    };
+
+
+    if (budgetsLoading || transactionsLoading || accountsLoading || categoriesLoading) {
         return (
             <div className="flex h-64 w-full items-center justify-center">
                 <Spinner size="large" />
@@ -155,19 +212,57 @@ export default function BudgetsPage() {
                         {budgets.map((budget) => {
                             const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
                             const isOverBudget = progress >= 100;
+                            const category = categories?.find(c => c.name === budget.category);
 
                             return (
                                 <Card key={budget.id} className="p-3">
-                                    <div className="flex items-center justify-between gap-2 text-xs mb-2">
+                                    <div className="flex items-center justify-between gap-2 text-xs mb-1">
                                         <div className="flex items-center gap-2 font-medium">
                                             <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
                                             <span className="truncate">{budget.category}</span>
                                         </div>
-                                        <div className="text-muted-foreground shrink-0">
+                                         {category && (
+                                            <AlertDialog>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent>
+                                                        <EditCategoryForm category={category} onCategoryChanged={handleDataChanged}>
+                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                                <Edit className="mr-2 h-4 w-4" /> Edit
+                                                            </DropdownMenuItem>
+                                                        </EditCategoryForm>
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem>
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                 <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete the "{category.name}" category and its associated budgets. This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteCategory(category.id, category.name)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-between items-baseline">
+                                        <div className="text-muted-foreground text-xs">
                                             {formatCurrency(budget.spent)} / {formatCurrency(budget.limit)}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 mt-1">
                                         <Progress value={progress} className={cn("h-2 flex-1", { '[&>div]:bg-destructive': isOverBudget })} />
                                         <span className={cn("text-xs font-medium w-12 text-right", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
                                             {isOverBudget ? 'Over' : `${Math.round(100 - progress)}%`}
@@ -182,5 +277,3 @@ export default function BudgetsPage() {
         </div>
     );
 }
-
-    
