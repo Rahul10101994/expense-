@@ -32,6 +32,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import EditCategoryForm from '@/components/categories/edit-category-form';
 import { useToast } from '@/hooks/use-toast';
