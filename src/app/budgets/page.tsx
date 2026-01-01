@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import EditCategoryForm from '@/components/categories/edit-category-form';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 
 export default function BudgetsPage() {
@@ -109,16 +110,18 @@ export default function BudgetsPage() {
     
     const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
-    const budgets: Budget[] = useMemo(() => {
-        if (!savedBudgets || !transactions) return [];
+    const { budgets, expenseBudgets, investmentBudgets } = useMemo(() => {
+        if (!savedBudgets || !transactions || !categories) {
+            return { budgets: [], expenseBudgets: [], investmentBudgets: [] };
+        }
         
-        const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = transactions.filter(t => t.type === 'expense' || t.type === 'investment').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
             return acc;
         }, {} as Record<string, number>);
         
-        return savedBudgets
+        const allBudgets = savedBudgets
             .filter(budget => budget.amount && budget.amount > 0)
             .map(budget => ({
                 id: budget.id,
@@ -128,7 +131,16 @@ export default function BudgetsPage() {
                 month: budget.month
         }));
 
-    }, [savedBudgets, transactions]);
+        const getCategoryType = (categoryName: string) => {
+            return categories.find(c => c.name === categoryName)?.type;
+        }
+
+        const expenseBudgets = allBudgets.filter(b => getCategoryType(b.category) === 'expense');
+        const investmentBudgets = allBudgets.filter(b => getCategoryType(b.category) === 'investment');
+
+        return { budgets: allBudgets, expenseBudgets, investmentBudgets };
+
+    }, [savedBudgets, transactions, categories]);
 
 
     const formatCurrency = (amount: number) => {
@@ -184,6 +196,69 @@ export default function BudgetsPage() {
         )
     }
 
+    const renderBudgetCard = (budget: Budget) => {
+        const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
+        const isOverBudget = progress >= 100;
+        const category = categories?.find(c => c.name === budget.category);
+
+        return (
+            <Card key={budget.id} className="p-3">
+                <div className="flex items-center justify-between gap-2 text-xs mb-1">
+                    <div className="flex items-center gap-2 font-medium">
+                        <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
+                        <span className="truncate">{budget.category}</span>
+                    </div>
+                     {category && (
+                        <AlertDialog>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <EditCategoryForm category={category} onCategoryChanged={handleDataChanged}>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </DropdownMenuItem>
+                                    </EditCategoryForm>
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                             <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete the "{category.name}" category and its associated budgets. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteCategory(category.name)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+                </div>
+                <div className="flex justify-between items-baseline">
+                    <div className="text-muted-foreground text-xs">
+                        {formatCurrency(budget.spent)} / {formatCurrency(budget.limit)}
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                    <Progress value={progress} className={cn("h-2 flex-1", { '[&>div]:bg-destructive': isOverBudget })} />
+                    <span className={cn("text-xs font-medium w-12 text-right", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
+                        {isOverBudget ? 'Over' : `${Math.round(100 - progress)}%`}
+                    </span>
+                </div>
+            </Card>
+        )
+    };
+
     return (
         <div className="space-y-4">
             <Card>
@@ -212,75 +287,38 @@ export default function BudgetsPage() {
                         <CardTitle>Budget by Category</CardTitle>
                         <CardDescription>A detailed look at your spending against your budgets for {format(currentMonth, 'MMMM yyyy')}.</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-2 md:grid-cols-2">
+                    <CardContent>
                         {budgets.length === 0 && (
                             <div className="text-center text-muted-foreground col-span-full py-8">
                                 <p>You haven't set any budgets for this month.</p>
                                 <Link href="/budget-planner" className="text-primary hover:underline">Set a budget now</Link>
                             </div>
                         )}
-                        {budgets.map((budget) => {
-                            const progress = budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
-                            const isOverBudget = progress >= 100;
-                            const category = categories?.find(c => c.name === budget.category);
-
-                            return (
-                                <Card key={budget.id} className="p-3">
-                                    <div className="flex items-center justify-between gap-2 text-xs mb-1">
-                                        <div className="flex items-center gap-2 font-medium">
-                                            <CategoryIcon category={budget.category} className="h-4 w-4 text-muted-foreground" />
-                                            <span className="truncate">{budget.category}</span>
-                                        </div>
-                                         {category && (
-                                            <AlertDialog>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                            <MoreVertical className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent>
-                                                        <EditCategoryForm category={category} onCategoryChanged={handleDataChanged}>
-                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                                            </DropdownMenuItem>
-                                                        </EditCategoryForm>
-                                                        <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem>
-                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                            </DropdownMenuItem>
-                                                        </AlertDialogTrigger>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                                 <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This will permanently delete the "{category.name}" category and its associated budgets. This action cannot be undone.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteCategory(category.name)}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
+                        {budgets.length > 0 && (
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Expense Budgets</h3>
+                                    <div className="grid gap-2 md:grid-cols-2">
+                                        {expenseBudgets.length > 0 ? (
+                                            expenseBudgets.map(renderBudgetCard)
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground col-span-full">No expense budgets set.</p>
                                         )}
                                     </div>
-                                    <div className="flex justify-between items-baseline">
-                                        <div className="text-muted-foreground text-xs">
-                                            {formatCurrency(budget.spent)} / {formatCurrency(budget.limit)}
-                                        </div>
+                                </div>
+                                <Separator />
+                                <div>
+                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Investment Budgets</h3>
+                                    <div className="grid gap-2 md:grid-cols-2">
+                                        {investmentBudgets.length > 0 ? (
+                                            investmentBudgets.map(renderBudgetCard)
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground col-span-full">No investment budgets set.</p>
+                                        )}
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <Progress value={progress} className={cn("h-2 flex-1", { '[&>div]:bg-destructive': isOverBudget })} />
-                                        <span className={cn("text-xs font-medium w-12 text-right", isOverBudget ? "text-red-500" : "text-muted-foreground")}>
-                                            {isOverBudget ? 'Over' : `${Math.round(100 - progress)}%`}
-                                        </span>
-                                    </div>
-                                </Card>
-                            )
-                        })}
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
