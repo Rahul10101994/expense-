@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import type { Transaction, Account } from '@/lib/types';
 import { useUser } from '@/firebase';
-import { isSameMonth, isSameYear } from 'date-fns';
+import { isSameMonth, isSameYear, format } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { TransactionType } from '@/lib/types';
@@ -68,6 +68,12 @@ export default function OverviewCards({ transactions, accounts }: { transactions
     return user?.displayName || user?.email || "Welcome Back!";
   }
 
+  const periodDisplay: Record<Period, string> = {
+    currentMonth: format(new Date(), 'MMMM yyyy'),
+    currentYear: 'This Year',
+    overall: 'Overall',
+  };
+
   return (
     <>
       <Card className={cn("col-span-full", "bg-secondary")}>
@@ -79,10 +85,10 @@ export default function OverviewCards({ transactions, accounts }: { transactions
             <div className="w-[140px]">
                 <Select onValueChange={(value: Period) => setPeriod(value)} defaultValue={period}>
                     <SelectTrigger className="w-full h-8 text-xs">
-                    <SelectValue placeholder="Select period" />
+                        <SelectValue>{periodDisplay[period]}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                    <SelectItem value="currentMonth">This Month</SelectItem>
+                    <SelectItem value="currentMonth">{periodDisplay.currentMonth}</SelectItem>
                     <SelectItem value="currentYear">This Year</SelectItem>
                     <SelectItem value="overall">Overall</SelectItem>
                     </SelectContent>
