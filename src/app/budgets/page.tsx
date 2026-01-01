@@ -15,7 +15,7 @@ import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-ch
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 
 export default function BudgetsPage() {
     const firestore = useFirestore();
@@ -43,14 +43,14 @@ export default function BudgetsPage() {
                 return;
             }
             
-            const monthStart = startOfMonth(currentMonth).toISOString();
-            const monthEnd = endOfMonth(currentMonth).toISOString();
+            const monthStart = startOfMonth(currentMonth);
+            const monthEnd = endOfMonth(currentMonth);
 
             for (const account of accounts) {
                 const transactionsQuery = query(
                     collection(firestore, `users/${user.uid}/accounts/${account.id}/transactions`),
-                    where('date', '>=', monthStart),
-                    where('date', '<=', monthEnd)
+                    where('date', '>=', monthStart.toISOString()),
+                    where('date', '<=', monthEnd.toISOString())
                 );
                 const transactionsSnapshot = await getDocs(transactionsQuery);
                 transactionsSnapshot.forEach(doc => {
@@ -76,9 +76,11 @@ export default function BudgetsPage() {
     const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
 
     const budgets: Budget[] = useMemo(() => {
-        if (!savedBudgets) return [];
+        if (!savedBudgets || !transactions) return [];
+        
+        const currentMonthTransactions = transactions.filter(t => isSameMonth(new Date(t.date), currentMonth));
 
-        const spendingByCategory = (transactions || []).filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = currentMonthTransactions.filter(t => t.type === 'expense').reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + Math.abs(t.amount);
             return acc;
@@ -94,7 +96,7 @@ export default function BudgetsPage() {
                 month: budget.month
         }));
 
-    }, [savedBudgets, transactions]);
+    }, [savedBudgets, transactions, currentMonth]);
 
 
     const formatCurrency = (amount: number) => {
