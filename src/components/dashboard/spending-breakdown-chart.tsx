@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { isSameMonth } from 'date-fns';
 
 import {
   Card,
@@ -20,7 +21,7 @@ import type { Transaction } from "@/lib/types"
 import { cn } from "@/lib/utils";
 
 export default function SpendingBreakdownChart({ transactions }: { transactions: Transaction[] }) {
-    const expenses = transactions.filter(t => t.type === 'expense');
+    const expenses = transactions.filter(t => t.type === 'expense' && isSameMonth(new Date(t.date), new Date()));
     
     const { spendingByCategory, totalExpenses } = React.useMemo(() => {
         const categoryMap: { [key: string]: number } = {};
