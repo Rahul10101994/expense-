@@ -95,10 +95,13 @@ export default function DashboardPage() {
 
     const { data: goals, isLoading: goalsLoading } = useCollection<Goal>(goalsQuery);
     
+    const currentMonthTransactions = useMemo(() => {
+        if (!transactions) return [];
+        return transactions.filter(t => isSameMonth(new Date(t.date), currentMonth));
+    }, [transactions, currentMonth]);
+
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets || !transactions) return [];
-
-        const currentMonthTransactions = transactions.filter(t => isSameMonth(new Date(t.date), currentMonth));
 
         const spendingByCategory = currentMonthTransactions.filter(t => t.type === TransactionType.Expense).reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
@@ -116,7 +119,7 @@ export default function DashboardPage() {
                 month: budget.month
         }));
 
-    }, [savedBudgets, transactions, currentMonth]);
+    }, [savedBudgets, transactions, currentMonth, currentMonthTransactions]);
     
 
     if (isLoading || budgetsLoading || goalsLoading) {
@@ -144,7 +147,7 @@ export default function DashboardPage() {
       </Link>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-5">
-          <IncomeExpenseChart transactions={financialData.transactions} />
+          <IncomeExpenseChart transactions={currentMonthTransactions} />
         </Card>
         <Card className="col-span-1 lg:col-span-2">
           <SpendingBreakdownChart transactions={financialData.transactions} />
