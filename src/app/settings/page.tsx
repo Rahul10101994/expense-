@@ -45,7 +45,6 @@ function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void })
     const { user } = useUser();
     const { toast } = useToast();
     const [newCategory, setNewCategory] = useState('');
-    const [open, setOpen] = useState(false);
 
     const categoriesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -65,7 +64,6 @@ function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void })
             toast({ title: "Category added", description: `"${newCategory}" has been added.` });
             setNewCategory('');
             onDataChanged();
-            setOpen(false);
         } catch (error) {
             console.error("Error adding category:", error);
             toast({ variant: 'destructive', title: "Error", description: "Could not add category." });
@@ -97,7 +95,7 @@ function ManageCategoriesSheet({ onDataChanged }: { onDataChanged: () => void })
     };
 
     return (
-        <Sheet open={open} onOpenChange={setOpen}>
+        <Sheet>
             <SheetTrigger asChild>
                 <Button>Manage Categories</Button>
             </SheetTrigger>
@@ -508,3 +506,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
