@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionType } from '@/lib/types';
+import AddCategoryForm from '@/components/categories/add-category-form';
 
 const formSchema = z.object({
   description: z.string().min(1, 'Required'),
@@ -53,7 +54,7 @@ const formSchema = z.object({
 }).refine(data => data.type !== 'expense' || !!data.expenseType, {
   message: 'Classify expense',
   path: ['expenseType'],
-}).refine(data => ['income', 'transfer', 'reconciliation'].includes(data.type) || (data.category && data.category.length > 0), {
+}).refine(data => ['income', 'transfer', 'reconciliation', 'investment'].includes(data.type) || (data.category && data.category.length > 0), {
     message: 'Required',
     path: ['category'],
 });
@@ -106,6 +107,8 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
         category = 'Transfer';
     } else if (values.type === TransactionType.Reconciliation) {
         category = 'Reconciliation';
+    } else if (values.type === TransactionType.Investment && !values.category) {
+        category = 'Investment';
     }
     
     const amount = [TransactionType.Income, TransactionType.Reconciliation].includes(values.type) ? Math.abs(values.amount) : -Math.abs(values.amount);
@@ -312,9 +315,16 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
                       name="category"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel className="text-xs">Category</FormLabel>
+                          <div className="flex justify-between items-center">
+                            <FormLabel className="text-xs">Category</FormLabel>
+                            {filteredCategories.length === 0 && <AddCategoryForm />}
+                          </div>
                           <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger className="h-10"><SelectValue placeholder="Select Category" /></SelectTrigger></FormControl>
+                            <FormControl>
+                                <SelectTrigger className="h-10">
+                                    <SelectValue placeholder={filteredCategories.length > 0 ? "Select Category" : "No categories found"} />
+                                </SelectTrigger>
+                            </FormControl>
                             <SelectContent>{filteredCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}</SelectContent>
                           </Select>
                           <FormMessage className="text-[10px]" />
@@ -355,5 +365,3 @@ export default function AddTransactionForm({ children, onTransactionAdded, trans
     </Dialog>
   );
 }
-
-    
