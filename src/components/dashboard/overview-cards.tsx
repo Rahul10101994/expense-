@@ -58,16 +58,16 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
   }, [filteredTransactions]);
 
   const { expenseBudget, investmentBudget, expenseProgress, investmentProgress } = useMemo(() => {
-    if (!budgets || period !== 'currentMonth') return { expenseBudget: 0, investmentBudget: 0, expenseProgress: 0, investmentProgress: 0 };
+    if (!budgets) return { expenseBudget: 0, investmentBudget: 0, expenseProgress: 0, investmentProgress: 0 };
     
     const expenseBudgetTotal = budgets.filter(b => b.type === 'expense').reduce((sum, b) => sum + b.limit, 0);
     const investmentBudgetTotal = budgets.filter(b => b.type === 'investment').reduce((sum, b) => sum + b.limit, 0);
     
     const expenseProgress = income > 0 ? (expenses / income) * 100 : 0;
-    const investmentProgress = investmentBudgetTotal > 0 ? (investments / investmentBudgetTotal) * 100 : 0;
+    const investmentProgress = income > 0 ? (investments / income) * 100 : 0;
 
     return { expenseBudget: expenseBudgetTotal, investmentBudget: investmentBudgetTotal, expenseProgress, investmentProgress };
-  }, [budgets, expenses, investments, period, income]);
+  }, [budgets, expenses, investments, income]);
 
   const totalBalance = useMemo(() => {
     if (!accounts) return 0;
@@ -136,13 +136,13 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
                         <div className="text-muted-foreground">Investments</div>
                         <div className="flex items-baseline gap-1">
                             <div className="font-medium text-blue-500">{formatCurrency(investments)}</div>
-                            {period === 'currentMonth' && investmentBudget > 0 && (
+                            {income > 0 && (
                                 <div className="text-muted-foreground">
                                     ({investmentProgress.toFixed(0)}%)
                                 </div>
                             )}
                         </div>
-                        {period === 'currentMonth' && investmentBudget > 0 && <Progress value={investmentProgress} className="h-1 mt-1" />}
+                        {period === 'currentMonth' && investmentBudget > 0 && <Progress value={(investments / investmentBudget) * 100} className="h-1 mt-1" />}
                     </div>
                     <div>
                         <div className="text-muted-foreground">Savings</div>
