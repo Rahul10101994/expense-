@@ -17,6 +17,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { TransactionType } from '@/lib/types';
+import NeedsWantsSummary from '@/components/dashboard/needs-wants-summary';
 
 
 export default function DashboardPage() {
@@ -166,6 +167,7 @@ export default function DashboardPage() {
           <Card>
             <SpendingBreakdownChart transactions={currentMonthTransactions} />
           </Card>
+          <NeedsWantsSummary transactions={currentMonthTransactions} />
         </div>
       </div>
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
