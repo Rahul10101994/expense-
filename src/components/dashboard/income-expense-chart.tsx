@@ -1,9 +1,9 @@
 
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import type { Transaction } from '@/lib/types';
 import { useMemo } from 'react';
 import { TransactionType } from '@/lib/types';
@@ -62,6 +62,7 @@ export default function IncomeExpenseChart({ transactions }: { transactions: Tra
                     tickFormatter={(value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', notation: 'compact' }).format(value as number)}
                 />
                  <ChartTooltip content={<ChartTooltipContent formatter={(value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value as number)} />} />
+                 <ChartLegend content={<ChartLegendContent />} />
                 <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
                 <Bar dataKey="investments" fill="var(--color-investments)" radius={4} />
             </BarChart>
