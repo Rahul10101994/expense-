@@ -10,7 +10,7 @@ import type { Transaction, Budget, Category, Account } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
 import { startOfMonth, endOfMonth, getYear, getMonth, format } from 'date-fns';
-import { ArrowDown, ArrowUp, PiggyBank, Download, ArrowLeft, TrendingUp, TrendingDown, Wallet, HandCoins } from 'lucide-react';
+import { ArrowDown, ArrowUp, PiggyBank, Download, ArrowLeft, TrendingUp, TrendingDown, Wallet, HandCoins, AreaChart } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
@@ -131,18 +131,21 @@ export default function ReportsPage() {
         fetchTransactions();
     }, [user, firestore, accounts, accountsLoading, startDate, endDate]);
 
-    const { income, expenses, savings } = useMemo(() => {
+    const { income, expenses, investments, savings } = useMemo(() => {
         let income = 0;
         let expenses = 0;
+        let investments = 0;
         transactions.forEach(t => {
             if (t.type === TransactionType.Income && t.category !== 'Transfer') {
                 income += t.amount;
             } else if (t.type === TransactionType.Expense) {
                 expenses += t.amount;
+            } else if (t.type === TransactionType.Investment) {
+                investments += t.amount;
             }
         });
-        const savings = income - expenses;
-        return { income, expenses, savings };
+        const savings = income - expenses - investments;
+        return { income, expenses, investments, savings };
     }, [transactions]);
 
     const { needs, wants } = useMemo(() => {
@@ -265,7 +268,7 @@ export default function ReportsPage() {
                 </CardContent>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 p-1">
                         <CardTitle className="text-sm font-medium">Total Income</CardTitle>
@@ -282,6 +285,15 @@ export default function ReportsPage() {
                     </CardHeader>
                     <CardContent className="p-1">
                         <div className="text-lg font-bold text-red-500">{formatCurrency(expenses)}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 p-1">
+                        <CardTitle className="text-sm font-medium">Total Investments</CardTitle>
+                        <AreaChart className="h-4 w-4 text-blue-500" />
+                    </CardHeader>
+                    <CardContent className="p-1">
+                        <div className="text-lg font-bold text-blue-500">{formatCurrency(investments)}</div>
                     </CardContent>
                 </Card>
                 <Card>
