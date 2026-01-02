@@ -10,7 +10,7 @@ import type { Transaction, Budget, Category, Account } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
 import { startOfMonth, endOfMonth, getYear, getMonth, format } from 'date-fns';
-import { ArrowDown, ArrowUp, PiggyBank, Download, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, PiggyBank, Download, ArrowLeft, TrendingUp, TrendingDown, Wallet, HandCoins } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
@@ -302,7 +302,7 @@ export default function ReportsPage() {
                     <Card>
                         <SpendingBreakdownChart transactions={transactions} />
                     </Card>
-                    <Card>
+                     <Card>
                         <NeedsWantsChart transactions={transactions} />
                     </Card>
                 </div>
