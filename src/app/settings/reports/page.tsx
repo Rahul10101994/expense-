@@ -303,26 +303,7 @@ export default function ReportsPage() {
                         <SpendingBreakdownChart transactions={transactions} />
                     </Card>
                     <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Needs vs. Wants</CardTitle>
-                            <CardDescription className="text-xs">A summary of your essential and non-essential spending.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-4 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <TrendingUp className="h-4 w-4 text-green-500" />
-                                    <span className="text-muted-foreground">Needs:</span>
-                                </div>
-                                <span className="font-semibold">{formatCurrency(needs)}</span>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm mt-2">
-                                <div className="flex items-center gap-2">
-                                    <TrendingDown className="h-4 w-4 text-red-500" />
-                                    <span className="text-muted-foreground">Wants:</span>
-                                </div>
-                                <span className="font-semibold">{formatCurrency(wants)}</span>
-                            </div>
-                        </CardContent>
+                        <NeedsWantsChart transactions={transactions} />
                     </Card>
                 </div>
             </div>
