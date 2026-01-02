@@ -30,7 +30,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export default function NeedsWantsChart({ transactions }: { transactions: Transaction[] }) {
+export default function NeedsWantsChart({ transactions, className }: { transactions: Transaction[], className?: string }) {
     
     const { needsWantsData, totalExpenses } = React.useMemo(() => {
         let needs = 0;
@@ -65,7 +65,7 @@ export default function NeedsWantsChart({ transactions }: { transactions: Transa
     };
 
   return (
-    <>
+    <Card className={className}>
       <CardHeader className="items-center pb-0">
         <CardTitle className="text-sm font-medium">Needs vs. Wants</CardTitle>
       </CardHeader>
@@ -111,6 +111,6 @@ export default function NeedsWantsChart({ transactions }: { transactions: Transa
           </>
         )}
       </CardFooter>
-    </>
+    </Card>
   )
 }

@@ -302,9 +302,7 @@ export default function ReportsPage() {
                     <Card>
                         <SpendingBreakdownChart transactions={transactions} />
                     </Card>
-                     <Card>
-                        <NeedsWantsChart transactions={transactions} />
-                    </Card>
+                    <NeedsWantsChart transactions={transactions} />
                 </div>
             </div>
             
