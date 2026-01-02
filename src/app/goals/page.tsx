@@ -4,10 +4,10 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Target, PlusCircle, Edit } from 'lucide-react';
-import { format, formatDistanceToNow, isSameMonth, isSameYear } from 'date-fns';
+import { format, formatDistanceToNow, isSameMonth, isSameYear, startOfMonth } from 'date-fns';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, getDocs } from 'firebase/firestore';
-import type { Goal, Transaction } from '@/lib/types';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import type { Goal, Transaction, Budget, Category } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import AddGoalForm from '@/components/goals/add-goal-form';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,23 @@ export default function GoalsPage() {
     }, [firestore, user, refreshKey]);
 
     const { data: allGoals, isLoading: goalsLoading } = useCollection<Goal>(goalsQuery);
+
+    const currentMonth = useMemo(() => new Date(), []);
+    const budgetsQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        const monthStart = startOfMonth(currentMonth).toISOString();
+        return query(
+            collection(firestore, `users/${user.uid}/budgets`),
+            where('month', '==', monthStart),
+        );
+    }, [firestore, user, currentMonth, refreshKey]);
+    const { data: savedBudgets, isLoading: budgetsLoading } = useCollection<Budget>(budgetsQuery);
+
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, `users/${user.uid}/categories`));
+    }, [firestore, user, refreshKey]);
+    const { data: categories, isLoading: categoriesLoading } = useCollection<Category>(categoriesQuery);
     
     const fetchTransactions = useCallback(async () => {
         if (!user || !firestore) {
@@ -51,6 +68,16 @@ export default function GoalsPage() {
     }, [fetchTransactions, refreshKey]);
 
     const onGoalChange = () => setRefreshKey(k => k + 1);
+
+    const totalExpenseBudget = useMemo(() => {
+        if (!savedBudgets || !categories) return 0;
+        return savedBudgets
+            .filter(b => {
+                const category = categories.find(c => c.name === b.categoryId);
+                return category?.type === 'expense';
+            })
+            .reduce((sum, b) => sum + (b.amount || 0), 0);
+    }, [savedBudgets, categories]);
 
     const { longTermGoals, recurringGoals } = useMemo(() => {
         if (!allGoals) return { longTermGoals: [], recurringGoals: [] };
@@ -99,11 +126,13 @@ export default function GoalsPage() {
         }).format(amount);
     };
 
-    const isLoading = goalsLoading || transactionsLoading;
+    const isLoading = goalsLoading || transactionsLoading || budgetsLoading || categoriesLoading;
 
     const renderGoalCard = (goal: Goal) => {
-        const progress = (goal.currentAmount / goal.targetAmount) * 100;
+        const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
         const isLongTerm = goal.period === 'long_term';
+        const isSpendingGoal = goal.type === 'need_spending' || goal.type === 'want_spending';
+        const budgetPercentage = totalExpenseBudget > 0 ? (goal.targetAmount / totalExpenseBudget) * 100 : 0;
 
         return (
             <Card key={goal.id}>
@@ -124,8 +153,11 @@ export default function GoalsPage() {
                             <span className="text-lg font-bold text-primary">
                                 {formatCurrency(goal.currentAmount)}
                             </span>
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground text-right">
                                 Target: {formatCurrency(goal.targetAmount)}
+                                {isSpendingGoal && totalExpenseBudget > 0 && (
+                                    <div className="text-xs">({budgetPercentage.toFixed(0)}% of expense budget)</div>
+                                )}
                             </span>
                         </div>
                         <Progress value={progress} />
@@ -211,5 +243,3 @@ export default function GoalsPage() {
         </div>
     );
 }
-
-    
