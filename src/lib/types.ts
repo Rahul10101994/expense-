@@ -47,7 +47,9 @@ export type Goal = {
   name: string;
   targetAmount: number;
   currentAmount: number;
-  targetDate: string;
+  targetDate?: string;
+  type: 'saving' | 'investment' | 'need_spending' | 'want_spending' | 'long_term';
+  period: 'monthly' | 'yearly' | 'long_term';
 };
 
 export type Category = {
@@ -56,3 +58,5 @@ export type Category = {
     userId: string;
     type: 'income' | 'expense' | 'investment';
 }
+
+    

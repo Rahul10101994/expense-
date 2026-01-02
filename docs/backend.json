@@ -190,7 +190,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Goal",
       "type": "object",
-      "description": "Represents a financial goal (e.g., saving for a down payment).",
+      "description": "Represents a financial goal (e.g., saving for a down payment or a monthly savings target).",
       "properties": {
         "id": {
           "type": "string",
@@ -206,16 +206,35 @@
         },
         "targetAmount": {
           "type": "number",
-          "description": "Target amount to be saved."
+          "description": "Target amount for the goal. For recurring goals, this is the periodic target."
         },
         "currentAmount": {
           "type": "number",
-          "description": "Current amount saved towards the goal."
+          "description": "Current amount achieved. For long-term goals, it's the total saved. For recurring, it's the amount for the current period."
         },
         "targetDate": {
           "type": "string",
-          "description": "Target date for achieving the goal.",
+          "description": "Target date for achieving a long-term goal. Not typically used for recurring goals.",
           "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of goal.",
+          "enum": [
+            "saving",
+            "investment",
+            "need_spending",
+            "want_spending"
+          ]
+        },
+        "period": {
+          "type": "string",
+          "description": "The recurrence period of the goal.",
+          "enum": [
+            "monthly",
+            "yearly",
+            "long_term"
+          ]
         }
       },
       "required": [
@@ -224,7 +243,8 @@
         "name",
         "targetAmount",
         "currentAmount",
-        "targetDate"
+        "type",
+        "period"
       ]
     }
   },
@@ -360,3 +380,5 @@
     "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, while adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs.\n\n**Authorization Independence:** Achieved through path-based ownership for user-specific data. No `get()` calls are required in security rules because each document's access control is determined by its path (e.g., `/users/{userId}/accounts/{accountId}`).\n\n**Structural Segregation:**  All documents within a collection share the same security requirements. For example, all documents under `/users/{userId}/accounts/{accountId}/transactions/{transactionId}` are owned by the user.\n\n**Access Modeling:**\n*   Private Data: Uses path-based ownership (`/users/{userId}/...`).\n*   Hierarchical Paths: Implements hierarchical paths for user-owned data (`/users/{userId}/accounts/{accountId}/transactions/{transactionId}`).\n\n**QAPs (Rules Are Not Filters):** The structure supports secure `list` operations by ensuring that only the owner (identified via the path) can access the data within their respective user ID path."
   }
 }
+
+    
