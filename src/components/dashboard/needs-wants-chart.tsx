@@ -114,3 +114,4 @@ export default function NeedsWantsChart({ transactions }: { transactions: Transa
     </>
   )
 }
+
