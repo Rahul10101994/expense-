@@ -13,6 +13,7 @@ import AddGoalForm from '@/components/goals/add-goal-form';
 import { Button } from '@/components/ui/button';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
+import { TransactionType } from '@/lib/types';
 
 export default function GoalsPage() {
     const firestore = useFirestore();
@@ -91,14 +92,14 @@ export default function GoalsPage() {
             let current = 0;
             switch(goal.type) {
                 case 'saving': {
-                    const income = relevantTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-                    const expenses = relevantTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-                    const investments = relevantTransactions.filter(t => t.type === 'investment').reduce((sum, t) => sum + t.amount, 0);
+                    const income = relevantTransactions.filter(t => t.type === TransactionType.Income).reduce((sum, t) => sum + t.amount, 0);
+                    const expenses = relevantTransactions.filter(t => t.type === TransactionType.Expense).reduce((sum, t) => sum + t.amount, 0);
+                    const investments = relevantTransactions.filter(t => t.type === TransactionType.Investment).reduce((sum, t) => sum + t.amount, 0);
                     current = income - expenses - investments;
                     break;
                 }
                 case 'investment':
-                    current = relevantTransactions.filter(t => t.type === 'investment').reduce((sum, t) => sum + t.amount, 0);
+                    current = relevantTransactions.filter(t => t.type === TransactionType.Investment).reduce((sum, t) => sum + t.amount, 0);
                     break;
                 case 'need_spending':
                     current = relevantTransactions.filter(t => t.expenseType === 'need').reduce((sum, t) => sum + t.amount, 0);
@@ -127,12 +128,31 @@ export default function GoalsPage() {
     };
 
     const isLoading = goalsLoading || transactionsLoading || budgetsLoading || categoriesLoading;
+    
+    const calculateTotalIncomeForPeriod = (period: 'monthly' | 'yearly') => {
+        const now = new Date();
+        const relevantTransactions = period === 'monthly'
+            ? transactions.filter(t => isSameMonth(new Date(t.date), now))
+            : transactions.filter(t => isSameYear(new Date(t.date), now));
+        
+        return relevantTransactions
+            .filter(t => t.type === TransactionType.Income)
+            .reduce((sum, t) => sum + t.amount, 0);
+    }
 
     const renderGoalCard = (goal: Goal) => {
         const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
         const isLongTerm = goal.period === 'long_term';
         const isSpendingGoal = goal.type === 'need_spending' || goal.type === 'want_spending';
+        const isSavingGoal = goal.type === 'saving';
+        
         const budgetPercentage = totalExpenseBudget > 0 ? (goal.targetAmount / totalExpenseBudget) * 100 : 0;
+
+        const totalIncomeForPeriod = (goal.period === 'monthly' || goal.period === 'yearly') 
+            ? calculateTotalIncomeForPeriod(goal.period) 
+            : 0;
+        const incomePercentage = totalIncomeForPeriod > 0 ? (goal.targetAmount / totalIncomeForPeriod) * 100 : 0;
+
 
         return (
             <Card key={goal.id}>
@@ -157,6 +177,9 @@ export default function GoalsPage() {
                                 Target: {formatCurrency(goal.targetAmount)}
                                 {isSpendingGoal && totalExpenseBudget > 0 && (
                                     <div className="text-xs">({budgetPercentage.toFixed(0)}% of expense budget)</div>
+                                )}
+                                 {isSavingGoal && totalIncomeForPeriod > 0 && (
+                                    <div className="text-xs">({incomePercentage.toFixed(0)}% of income)</div>
                                 )}
                             </span>
                         </div>
