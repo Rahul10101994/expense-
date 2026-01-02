@@ -51,7 +51,7 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
       }
     });
     
-    const savings = income - expenses - investments;
+    const savings = income - expenses;
     const savingsRate = income > 0 ? (savings / income) * 100 : 0;
 
     return { income, expenses, investments, savings, savingsRate };
@@ -60,13 +60,13 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
   const { expenseBudget, investmentBudget, expenseProgress, investmentProgress } = useMemo(() => {
     if (!budgets || period !== 'currentMonth') return { expenseBudget: 0, investmentBudget: 0, expenseProgress: 0, investmentProgress: 0 };
     
-    const expenseBudget = budgets.filter(b => b.type === 'expense').reduce((sum, b) => sum + b.limit, 0);
-    const investmentBudget = budgets.filter(b => b.type === 'investment').reduce((sum, b) => sum + b.limit, 0);
+    const expenseBudgetTotal = budgets.filter(b => b.type === 'expense').reduce((sum, b) => sum + b.limit, 0);
+    const investmentBudgetTotal = budgets.filter(b => b.type === 'investment').reduce((sum, b) => sum + b.limit, 0);
     
-    const expenseProgress = expenseBudget > 0 ? (expenses / expenseBudget) * 100 : 0;
-    const investmentProgress = investmentBudget > 0 ? (investments / investmentBudget) * 100 : 0;
+    const expenseProgress = expenseBudgetTotal > 0 ? (expenses / expenseBudgetTotal) * 100 : 0;
+    const investmentProgress = investmentBudgetTotal > 0 ? (investments / investmentBudgetTotal) * 100 : 0;
 
-    return { expenseBudget, investmentBudget, expenseProgress, investmentProgress };
+    return { expenseBudget: expenseBudgetTotal, investmentBudget: investmentBudgetTotal, expenseProgress, investmentProgress };
   }, [budgets, expenses, investments, period]);
 
   const totalBalance = useMemo(() => {
