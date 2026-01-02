@@ -153,8 +153,8 @@ export default function LoginPage() {
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
-                     <div className="text-right pt-2">
-                       <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                    <div className="text-right pt-2">
+                        <Link href="/forgot-password" className="text-xs text-primary hover:underline">
                           Forgot Password?
                         </Link>
                     </div>
