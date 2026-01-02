@@ -51,7 +51,7 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
       }
     });
     
-    const savings = income - expenses;
+    const savings = income - expenses - investments;
     const savingsRate = income > 0 ? (savings / income) * 100 : 0;
 
     return { income, expenses, investments, savings, savingsRate };
