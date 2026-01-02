@@ -11,7 +11,6 @@ import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/fir
 import type { Transaction, Budget, Account, Category } from '@/lib/types';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
-import SpendingBreakdownChart from '@/components/dashboard/spending-breakdown-chart';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -278,50 +277,45 @@ export default function BudgetsPage() {
 
             <BudgetGoals budgets={budgets} />
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card>
-                    <SpendingBreakdownChart transactions={transactions || []} />
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Budget by Category</CardTitle>
-                        <CardDescription>A detailed look at your spending against your budgets for {format(currentMonth, 'MMMM yyyy')}.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {budgets.length === 0 && (
-                            <div className="text-center text-muted-foreground col-span-full py-8">
-                                <p>You haven't set any budgets for this month.</p>
-                                <Link href="/budget-planner" className="text-primary hover:underline">Set a budget now</Link>
-                            </div>
-                        )}
-                        {budgets.length > 0 && (
-                            <div className="space-y-4">
-                                <div>
-                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Expense Budgets</h3>
-                                    <div className="grid gap-2 md:grid-cols-2">
-                                        {expenseBudgets.length > 0 ? (
-                                            expenseBudgets.map(renderBudgetCard)
-                                        ) : (
-                                            <p className="text-xs text-muted-foreground col-span-full">No expense budgets set.</p>
-                                        )}
-                                    </div>
-                                </div>
-                                <Separator />
-                                <div>
-                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Investment Budgets</h3>
-                                    <div className="grid gap-2 md:grid-cols-2">
-                                        {investmentBudgets.length > 0 ? (
-                                            investmentBudgets.map(renderBudgetCard)
-                                        ) : (
-                                            <p className="text-xs text-muted-foreground col-span-full">No investment budgets set.</p>
-                                        )}
-                                    </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Budget by Category</CardTitle>
+                    <CardDescription>A detailed look at your spending against your budgets for {format(currentMonth, 'MMMM yyyy')}.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {budgets.length === 0 && (
+                        <div className="text-center text-muted-foreground col-span-full py-8">
+                            <p>You haven't set any budgets for this month.</p>
+                            <Link href="/budget-planner" className="text-primary hover:underline">Set a budget now</Link>
+                        </div>
+                    )}
+                    {budgets.length > 0 && (
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="text-sm font-medium text-muted-foreground mb-2">Expense Budgets</h3>
+                                <div className="grid gap-2 md:grid-cols-2">
+                                    {expenseBudgets.length > 0 ? (
+                                        expenseBudgets.map(renderBudgetCard)
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground col-span-full">No expense budgets set.</p>
+                                    )}
                                 </div>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                            <Separator />
+                            <div>
+                                <h3 className="text-sm font-medium text-muted-foreground mb-2">Investment Budgets</h3>
+                                <div className="grid gap-2 md:grid-cols-2">
+                                    {investmentBudgets.length > 0 ? (
+                                        investmentBudgets.map(renderBudgetCard)
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground col-span-full">No investment budgets set.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }
