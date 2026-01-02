@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -91,11 +92,7 @@ export default function GoalsPage() {
         let filtered = allGoals;
 
         if (typeFilter !== 'all') {
-            if (typeFilter === 'long_term') {
-                filtered = filtered.filter(g => g.period === 'long_term');
-            } else {
-                filtered = filtered.filter(g => g.type === typeFilter);
-            }
+            filtered = filtered.filter(g => g.type === typeFilter);
         }
 
         if (periodFilter !== 'all') {
@@ -249,7 +246,6 @@ export default function GoalsPage() {
                             <SelectItem value="investment">Investment</SelectItem>
                             <SelectItem value="need_spending">"Needs" Spending</SelectItem>
                             <SelectItem value="want_spending">"Wants" Spending</SelectItem>
-                            <SelectItem value="long_term">Long-Term Savings</SelectItem>
                         </SelectContent>
                     </Select>
                      <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
