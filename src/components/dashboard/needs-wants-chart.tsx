@@ -18,6 +18,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { Transaction } from "@/lib/types"
+import { cn } from "@/lib/utils";
 
 const chartConfig = {
   needs: {
@@ -32,7 +33,7 @@ const chartConfig = {
 
 export default function NeedsWantsChart({ transactions, className }: { transactions: Transaction[], className?: string }) {
     
-    const { needsWantsData, totalExpenses } = React.useMemo(() => {
+    const { needs, wants, needsWantsData, totalExpenses } = React.useMemo(() => {
         let needs = 0;
         let wants = 0;
         
@@ -53,7 +54,7 @@ export default function NeedsWantsChart({ transactions, className }: { transacti
             { name: 'Wants', value: wants, fill: 'hsl(var(--chart-2))' },
         ].filter(item => item.value > 0);
         
-        return { needsWantsData: data, totalExpenses: needs + wants };
+        return { needs, wants, needsWantsData: data, totalExpenses: needs + wants };
 
     }, [transactions]);
 
@@ -105,8 +106,21 @@ export default function NeedsWantsChart({ transactions, className }: { transacti
             <div className="flex w-full items-center gap-2 font-medium leading-none">
               Total Expenses: {formatCurrency(totalExpenses)}
             </div>
-            <div className="leading-none text-muted-foreground w-full">
-              Showing total expenses classified as needs vs. wants.
+             <div className="flex w-full flex-col gap-2 text-sm">
+              <div className="flex items-center gap-2 font-medium leading-none">
+                <span className="flex h-2 w-2 rounded-full bg-[hsl(var(--chart-1))]" />
+                <div className="flex justify-between w-full">
+                    <span>Needs:</span>
+                    <span>{totalExpenses > 0 ? `${((needs / totalExpenses) * 100).toFixed(0)}%` : '0%'}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 font-medium leading-none">
+                <span className="flex h-2 w-2 rounded-full bg-[hsl(var(--chart-2))]" />
+                <div className="flex justify-between w-full">
+                    <span>Wants:</span>
+                    <span>{totalExpenses > 0 ? `${((wants / totalExpenses) * 100).toFixed(0)}%` : '0%'}</span>
+                </div>
+              </div>
             </div>
           </>
         )}
