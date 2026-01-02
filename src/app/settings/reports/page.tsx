@@ -10,7 +10,7 @@ import type { Transaction, Budget, Category, Account } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, useEffect } from 'react';
 import { startOfMonth, endOfMonth, getYear, getMonth, format } from 'date-fns';
-import { ArrowDown, ArrowUp, PiggyBank, Download, ArrowLeft } from 'lucide-react';
+import { ArrowDown, ArrowUp, PiggyBank, Download, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Progress } from '@/components/ui/progress';
 import { CategoryIcon } from '@/lib/icons';
@@ -142,6 +142,19 @@ export default function ReportsPage() {
         });
         const savings = income - expenses;
         return { income, expenses, savings };
+    }, [transactions]);
+
+    const { needs, wants } = useMemo(() => {
+        let needs = 0;
+        let wants = 0;
+        transactions.filter(t => t.type === 'expense').forEach(t => {
+            if (t.expenseType === 'need') {
+                needs += t.amount;
+            } else if (t.expenseType === 'want') {
+                wants += t.amount;
+            }
+        });
+        return { needs, wants };
     }, [transactions]);
 
     const budgetsQuery = useMemoFirebase(() => {
@@ -288,6 +301,28 @@ export default function ReportsPage() {
                  <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
                     <Card>
                         <SpendingBreakdownChart transactions={transactions} />
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Needs vs. Wants</CardTitle>
+                            <CardDescription className="text-xs">A summary of your essential and non-essential spending.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-green-500" />
+                                    <span className="text-muted-foreground">Needs:</span>
+                                </div>
+                                <span className="font-semibold">{formatCurrency(needs)}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm mt-2">
+                                <div className="flex items-center gap-2">
+                                    <TrendingDown className="h-4 w-4 text-red-500" />
+                                    <span className="text-muted-foreground">Wants:</span>
+                                </div>
+                                <span className="font-semibold">{formatCurrency(wants)}</span>
+                            </div>
+                        </CardContent>
                     </Card>
                 </div>
             </div>
