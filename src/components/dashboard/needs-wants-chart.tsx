@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell } from 'recharts';
 
 import {
   Card,
@@ -31,20 +31,22 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function NeedsWantsChart({ transactions }: { transactions: Transaction[] }) {
-    const expenses = transactions.filter(t => t.type === 'expense');
     
     const { needsWantsData, totalExpenses } = React.useMemo(() => {
         let needs = 0;
         let wants = 0;
         
-        expenses.forEach(t => {
-            const amount = t.amount;
-            if (t.expenseType === 'need') {
-                needs += amount;
-            } else if (t.expenseType === 'want') {
-                wants += amount;
-            }
-        });
+        if (transactions) {
+            const expenses = transactions.filter(t => t.type === 'expense');
+            expenses.forEach(t => {
+                const amount = t.amount;
+                if (t.expenseType === 'need') {
+                    needs += amount;
+                } else if (t.expenseType === 'want') {
+                    wants += amount;
+                }
+            });
+        }
 
         const data = [
             { name: 'Needs', value: needs, fill: 'hsl(var(--chart-1))' },
@@ -53,7 +55,7 @@ export default function NeedsWantsChart({ transactions }: { transactions: Transa
         
         return { needsWantsData: data, totalExpenses: needs + wants };
 
-    }, [expenses]);
+    }, [transactions]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
