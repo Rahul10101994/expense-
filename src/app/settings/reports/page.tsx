@@ -175,7 +175,7 @@ export default function ReportsPage() {
     const budgets: Budget[] = useMemo(() => {
         if (!savedBudgets || !transactions) return [];
 
-        const spendingByCategory = transactions.filter(t => t.type === 'expense').reduce((acc, t) => {
+        const spendingByCategory = transactions.filter(t => t.type === TransactionType.Expense || t.type === TransactionType.Investment).reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
             return acc;
