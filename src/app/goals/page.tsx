@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,6 +13,10 @@ import { Button } from '@/components/ui/button';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { TransactionType } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
+type PeriodFilter = 'all' | 'monthly' | 'yearly' | 'long_term';
 
 export default function GoalsPage() {
     const firestore = useFirestore();
@@ -21,6 +24,8 @@ export default function GoalsPage() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [transactionsLoading, setTransactionsLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
 
     const goalsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -83,6 +88,21 @@ export default function GoalsPage() {
     const { longTermGoals, recurringGoals } = useMemo(() => {
         if (!allGoals) return { longTermGoals: [], recurringGoals: [] };
 
+        let filtered = allGoals;
+
+        if (typeFilter !== 'all') {
+            if (typeFilter === 'long_term') {
+                filtered = filtered.filter(g => g.period === 'long_term');
+            } else {
+                filtered = filtered.filter(g => g.type === typeFilter);
+            }
+        }
+
+        if (periodFilter !== 'all') {
+            filtered = filtered.filter(g => g.period === periodFilter);
+        }
+
+
         const now = new Date();
         const currentMonthTransactions = transactions.filter(t => isSameMonth(new Date(t.date), now));
         const currentYearTransactions = transactions.filter(t => isSameYear(new Date(t.date), now));
@@ -111,14 +131,14 @@ export default function GoalsPage() {
             return current;
         };
         
-        const recurring = allGoals
+        const recurring = filtered
             .filter(g => g.period !== 'long_term')
             .map(g => ({...g, currentAmount: calculateCurrentAmount(g)}));
             
-        const longTerm = allGoals.filter(g => g.period === 'long_term');
+        const longTerm = filtered.filter(g => g.period === 'long_term');
         
         return { longTermGoals: longTerm, recurringGoals: recurring };
-    }, [allGoals, transactions]);
+    }, [allGoals, transactions, typeFilter, periodFilter]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -200,6 +220,9 @@ export default function GoalsPage() {
         );
     }
 
+    const showRecurringGoals = periodFilter === 'all' || periodFilter === 'monthly' || periodFilter === 'yearly';
+    const showLongTermGoals = periodFilter === 'all' || periodFilter === 'long_term';
+
     return (
         <div className="space-y-6">
              <Card>
@@ -215,6 +238,27 @@ export default function GoalsPage() {
                         </Button>
                     </AddGoalForm>
                 </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                        <SelectTrigger className="w-full sm:w-auto h-9 text-xs">
+                            <SelectValue placeholder="Filter by type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Goal Types</SelectItem>
+                            <SelectItem value="saving">Savings</SelectItem>
+                            <SelectItem value="investment">Investment</SelectItem>
+                            <SelectItem value="need_spending">"Needs" Spending</SelectItem>
+                            <SelectItem value="want_spending">"Wants" Spending</SelectItem>
+                            <SelectItem value="long_term">Long-Term Savings</SelectItem>
+                        </SelectContent>
+                    </Select>
+                     <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                        <Button size="sm" variant={periodFilter === 'all' ? 'secondary' : 'ghost'} onClick={() => setPeriodFilter('all')} className="text-xs h-7">All</Button>
+                        <Button size="sm" variant={periodFilter === 'monthly' ? 'secondary' : 'ghost'} onClick={() => setPeriodFilter('monthly')} className="text-xs h-7">Monthly</Button>
+                        <Button size="sm" variant={periodFilter === 'yearly' ? 'secondary' : 'ghost'} onClick={() => setPeriodFilter('yearly')} className="text-xs h-7">Yearly</Button>
+                        <Button size="sm" variant={periodFilter === 'long_term' ? 'secondary' : 'ghost'} onClick={() => setPeriodFilter('long_term')} className="text-xs h-7">Long Term</Button>
+                    </div>
+                </CardContent>
             </Card>
 
             {isLoading && (
@@ -225,29 +269,33 @@ export default function GoalsPage() {
             
             {!isLoading && (
                 <div className="space-y-6">
-                    <div>
-                        <h2 className="text-xl font-semibold mb-2">Recurring Goals</h2>
-                        {recurringGoals.length > 0 ? (
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {recurringGoals.map(renderGoalCard)}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">No recurring goals set. Try adding a monthly savings goal!</p>
-                        )}
-                    </div>
+                    {showRecurringGoals && (
+                        <div>
+                            <h2 className="text-xl font-semibold mb-2">Recurring Goals</h2>
+                            {recurringGoals.length > 0 ? (
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {recurringGoals.map(renderGoalCard)}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No recurring goals match your filters.</p>
+                            )}
+                        </div>
+                    )}
                     
-                    <Separator />
+                    {showRecurringGoals && showLongTermGoals && <Separator />}
 
-                    <div>
-                        <h2 className="text-xl font-semibold mb-2">Long-Term Goals</h2>
-                        {longTermGoals.length > 0 ? (
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {longTermGoals.map(renderGoalCard)}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">No long-term goals set. Saving for a big purchase?</p>
-                        )}
-                    </div>
+                    {showLongTermGoals && (
+                         <div>
+                            <h2 className="text-xl font-semibold mb-2">Long-Term Goals</h2>
+                            {longTermGoals.length > 0 ? (
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {longTermGoals.map(renderGoalCard)}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No long-term goals match your filters.</p>
+                            )}
+                        </div>
+                    )}
 
                     {allGoals?.length === 0 && (
                         <Card className="flex flex-col items-center justify-center text-center p-8 border-dashed">
