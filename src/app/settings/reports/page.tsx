@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import NeedsWantsChart from '@/components/dashboard/needs-wants-chart';
 import { TransactionType } from '@/lib/types';
+import NeedsWantsSummary from '@/components/dashboard/needs-wants-summary';
 
 type Period = 'currentMonth' | 'currentYear' | 'overall' | 'custom';
 
@@ -302,6 +303,7 @@ export default function ReportsPage() {
                     <Card>
                         <SpendingBreakdownChart transactions={transactions} />
                     </Card>
+                    <NeedsWantsSummary transactions={transactions} />
                 </div>
             </div>
             
