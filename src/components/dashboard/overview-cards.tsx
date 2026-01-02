@@ -36,7 +36,7 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
     return transactions;
   }, [transactions, period]);
 
-  const { income, expenses, investments, savings } = useMemo(() => {
+  const { income, expenses, investments, savings, savingsRate } = useMemo(() => {
     let income = 0;
     let expenses = 0;
     let investments = 0;
@@ -52,8 +52,9 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
     });
     
     const savings = income - expenses - investments;
+    const savingsRate = income > 0 ? (savings / income) * 100 : 0;
 
-    return { income, expenses, investments, savings };
+    return { income, expenses, investments, savings, savingsRate };
   }, [filteredTransactions]);
 
   const { expenseBudget, investmentBudget, expenseProgress, investmentProgress } = useMemo(() => {
@@ -145,7 +146,14 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
                     </div>
                     <div>
                         <div className="text-muted-foreground">Savings</div>
-                        <div className={cn("font-medium", savings >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(savings)}</div>
+                        <div className="flex items-baseline gap-1">
+                            <div className={cn("font-medium", savings >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(savings)}</div>
+                            {income > 0 && (
+                                <div className="text-muted-foreground">
+                                    ({savingsRate.toFixed(0)}%)
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </CardContent>
