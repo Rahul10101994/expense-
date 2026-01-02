@@ -63,11 +63,11 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
     const expenseBudgetTotal = budgets.filter(b => b.type === 'expense').reduce((sum, b) => sum + b.limit, 0);
     const investmentBudgetTotal = budgets.filter(b => b.type === 'investment').reduce((sum, b) => sum + b.limit, 0);
     
-    const expenseProgress = expenseBudgetTotal > 0 ? (expenses / expenseBudgetTotal) * 100 : 0;
+    const expenseProgress = income > 0 ? (expenses / income) * 100 : 0;
     const investmentProgress = investmentBudgetTotal > 0 ? (investments / investmentBudgetTotal) * 100 : 0;
 
     return { expenseBudget: expenseBudgetTotal, investmentBudget: investmentBudgetTotal, expenseProgress, investmentProgress };
-  }, [budgets, expenses, investments, period]);
+  }, [budgets, expenses, investments, period, income]);
 
   const totalBalance = useMemo(() => {
     if (!accounts) return 0;
@@ -124,13 +124,13 @@ export default function OverviewCards({ transactions, accounts, budgets }: { tra
                         <div className="text-muted-foreground">Expenses</div>
                          <div className="flex items-baseline gap-1">
                             <div className="font-medium text-red-500">{formatCurrency(expenses)}</div>
-                             {period === 'currentMonth' && expenseBudget > 0 && (
+                             {income > 0 && (
                                 <div className="text-muted-foreground">
                                     ({expenseProgress.toFixed(0)}%)
                                 </div>
                             )}
                         </div>
-                        {period === 'currentMonth' && expenseBudget > 0 && <Progress value={expenseProgress} className="h-1 mt-1" />}
+                        {period === 'currentMonth' && expenseBudget > 0 && <Progress value={(expenses / expenseBudget) * 100} className="h-1 mt-1" />}
                     </div>
                     <div>
                         <div className="text-muted-foreground">Investments</div>
