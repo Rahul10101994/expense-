@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    allowedDevOrigins: ["https://6000-firebase-financeflow1-1767329375573.cluster-fkltigo73ncaixtmokrzxhwsfc.cloudworkstations.dev"]
+  },
   images: {
     remotePatterns: [
       {
