@@ -106,12 +106,17 @@ export default function AddGoalForm({ goal, children, onGoalChanged }: AddGoalFo
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (!goalsCollection || !user) return;
     
-    const goalData: Partial<Goal> = {
-      ...values,
+    // Construct the base goal data object
+    const goalData: Omit<Goal, 'id' | 'targetDate'> & { targetDate?: string } = {
+      name: values.name,
+      targetAmount: values.targetAmount,
+      currentAmount: values.period === 'long_term' ? values.currentAmount || 0 : 0,
+      type: values.type,
+      period: values.period,
       userId: user.uid,
-      currentAmount: values.period === 'long_term' ? values.currentAmount || 0 : 0
     };
 
+    // Only add targetDate if it exists
     if (values.targetDate) {
         goalData.targetDate = values.targetDate.toISOString();
     }
@@ -308,3 +313,5 @@ export default function AddGoalForm({ goal, children, onGoalChanged }: AddGoalFo
     </Dialog>
   );
 }
+
+    
