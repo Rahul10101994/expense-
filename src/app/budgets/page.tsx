@@ -36,6 +36,7 @@ import {
 import EditCategoryForm from '@/components/categories/edit-category-form';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { TransactionType } from '@/lib/types';
 
 
 export default function BudgetsPage() {
@@ -114,7 +115,7 @@ export default function BudgetsPage() {
             return { budgets: [], expenseBudgets: [], investmentBudgets: [] };
         }
         
-        const spendingByCategory = transactions.filter(t => t.type === 'expense' || t.type === 'investment').reduce((acc, t) => {
+        const spendingByCategory = transactions.filter(t => t.type === TransactionType.Expense || t.type === TransactionType.Investment).reduce((acc, t) => {
             const categoryKey = t.category || 'Other';
             acc[categoryKey] = (acc[categoryKey] || 0) + t.amount;
             return acc;
