@@ -18,7 +18,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
+  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password';
 
   useEffect(() => {
     if (!isUserLoading && !user && !isAuthPage) {
