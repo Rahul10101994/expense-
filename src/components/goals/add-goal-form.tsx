@@ -109,9 +109,12 @@ export default function AddGoalForm({ goal, children, onGoalChanged }: AddGoalFo
     const goalData: Partial<Goal> = {
       ...values,
       userId: user.uid,
-      targetDate: values.targetDate ? values.targetDate.toISOString() : undefined,
       currentAmount: values.period === 'long_term' ? values.currentAmount || 0 : 0
     };
+
+    if (values.targetDate) {
+        goalData.targetDate = values.targetDate.toISOString();
+    }
     
     if(goal && goal.id) {
         const goalDoc = doc(goalsCollection, goal.id);
@@ -305,5 +308,3 @@ export default function AddGoalForm({ goal, children, onGoalChanged }: AddGoalFo
     </Dialog>
   );
 }
-
-    
