@@ -9,10 +9,6 @@ import { useMemo } from 'react';
 import { TransactionType } from '@/lib/types';
 
 const chartConfig = {
-  income: {
-    label: "Income",
-    color: "hsl(var(--chart-2))",
-  },
   expenses: {
     label: "Expenses",
     color: "hsl(var(--destructive))",
@@ -25,16 +21,14 @@ const chartConfig = {
 
 export default function IncomeExpenseChart({ transactions }: { transactions: Transaction[] }) {
     const chartData = useMemo(() => {
-    const dataByDay: { [key: string]: { date: string; income: number; expenses: number; investments: number } } = {};
+    const dataByDay: { [key: string]: { date: string; expenses: number; investments: number } } = {};
 
     transactions.forEach(t => {
       const day = new Date(t.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
       if (!dataByDay[day]) {
-        dataByDay[day] = { date: day, income: 0, expenses: 0, investments: 0 };
+        dataByDay[day] = { date: day, expenses: 0, investments: 0 };
       }
-      if (t.type === TransactionType.Income) {
-        dataByDay[day].income += t.amount;
-      } else if (t.type === TransactionType.Expense) {
+      if (t.type === TransactionType.Expense) {
         dataByDay[day].expenses += Math.abs(t.amount);
       } else if (t.type === TransactionType.Investment) {
         dataByDay[day].investments += Math.abs(t.amount);
@@ -68,7 +62,6 @@ export default function IncomeExpenseChart({ transactions }: { transactions: Tra
                     tickFormatter={(value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', notation: 'compact' }).format(value as number)}
                 />
                  <ChartTooltip content={<ChartTooltipContent formatter={(value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value as number)} />} />
-                <Bar dataKey="income" fill="var(--color-income)" radius={4} />
                 <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
                 <Bar dataKey="investments" fill="var(--color-investments)" radius={4} />
             </BarChart>
