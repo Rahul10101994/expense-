@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -11,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import type { Budget } from '@/lib/types';
 import { useMemo } from 'react';
 
-export default function BudgetGoals({ budgets }: { budgets: (Budget & { type?: 'expense' | 'investment' })[] }) {
+export default function BudgetGoals({ budgets }: { budgets: Budget[] }) {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
             style: 'currency',
